@@ -75,48 +75,35 @@ class Generator(nn.Module):
         #nn.BatchNorm2d(3),
         nn.Tanh()
         )
+        # Tanh at last layer. Source: https://github.com/soumith/ganhacks
 
 
-    def forward_pass(self, data):
-        print('data.size()')
-        print(data.size())
+    def forward(self, data):
+
+
         output1 = self.conv_1(data)
-        print(output1.size())
+
 
         output2 = self.conv_2(output1)
-        print(output2.size())
 
         output3 = self.conv_3(output2)
-        print(output3.size())
 
         output4 = self.conv_4(output3)
-        print(output4.size())
-
 
         output5 = self.conv_5(output4)
-        print(output5.size())
 
         # Decoding
-
-        print(output5.size())
+        
         output1_de = self.conv_trans_1(output5)
-        print(output1_de.size())
-
 
         output2_de = self.conv_trans_2(output1_de)
-        print(output2_de.size())
 
 
         output3_de = self.conv_trans_3(output2_de)
-        print(output3_de.size())
-
 
         output4_de = self.conv_trans_4(output3_de)
-        print(output4_de.size())
-
 
         output5_de = self.conv_trans_5(output4_de)
-        print(output5_de.size())
 
         return output5_de
 
