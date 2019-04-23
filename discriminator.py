@@ -40,29 +40,26 @@ class Discriminator(nn.Module):
         )
 
     def forward(self, data):
-        print('data.size()')
-        print(data.size())
+        # print('data.size()')
+        # print(data.size())
         output1 = self.conv_1(data)
-        print(output1.size())
+        # print(output1.size())
 
         output2 = self.conv_2(output1)
-        print(output2.size())
+        # print(output2.size())
 
         output3 = self.conv_3(output2)
-        print(output3.size())
+        # print(output3.size())
 
         output4 = self.conv_4(output3)
-        print(output4.size())
+        # print(output4.size())
 
 
         output5 = self.conv_5(output4)
-        print(output5.size())
+        # print(output5.size())
 
         # Decoding
 
-        print(output5.size())
-
-
-
+        # print(output5.size())
 
         return output5

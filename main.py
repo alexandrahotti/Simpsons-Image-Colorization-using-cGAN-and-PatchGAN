@@ -72,9 +72,10 @@ def loadData():
     workers = 2
 
     # Batch size during training
-    batch_size = 10
+    batch_size = 2
 
 
+    #dataroot_train = "C:\\Users\\Alexa\\Desktop\\KTH\\årskurs_4\\DeepLearning\\Assignments\\github\\Deep-Learning-in-Data-Science\\Project\\alex_trainset_22apr\\trainset_gray\\temp"
     dataroot_train = "C:\\Users\\Alexa\\Desktop\\KTH\\årskurs_4\\DeepLearning\\Assignments\\github\\Deep-Learning-in-Data-Science\\Project\\alex_trainset_22apr\\trainset_gray"
 
     trainset = SimpsonsDataset(datafolder = dataroot_train, transform=transforms.Compose([
@@ -89,7 +90,7 @@ def loadData():
 
 def optimizers(generator, discriminator, learningrate=1e-4, amsgrad=False, b=0.9, momentum=0.9):
     # https://pytorch.org/docs/stable/_modules/torch/optim/adam.html
-    # use adam for generator and SGD for discriminator. source: https://github.com/soumith/ganhacks
+    # Use adam for generator and SGD for discriminator. source: https://github.com/soumith/ganhacks
 
     Discriminator_optimizer = optim.SGD(
         discriminator.parameters(), lr=learningrate, momentum=momentum)
@@ -115,11 +116,8 @@ def get_labels():
     return true_im, false_im
 
 
-
-
-
 def GAN_training():
-    epochs = 10
+    epochs = 5
     ngpu = 1
     device = "cpu"
     generator = Generator()  # ngpu) #.to(device) add later to make meory efficient
@@ -127,7 +125,6 @@ def GAN_training():
     discriminator = Discriminator()
 
     dataloader = loadData()
-
 
     true_im_label, false_im_label = get_labels()
 
@@ -168,29 +165,43 @@ def GAN_training():
             #
             # input()
 
-            iters, G_losses, D_losses = train_GAN(discriminator,generator,Discriminator_optimizer, Generator_optimizer , batch[0], batch[1], true_im_label, false_im_label, i, epoch, iters)
 
-            if criteria_validate_generator(iters, epoch, epochs, i):
-                img = validate_generator(bw_im, generator)
+
+
+            iters, G_losses, D_losses = train_GAN(discriminator,generator,Discriminator_optimizer, Generator_optimizer , batch[0], batch[1], true_im_label, false_im_label, i, epoch, iters, epochs, dataloader, G_losses, D_losses)
+
+
+            if criteria_validate_generator(dataloader, iters, epoch, epochs, i):
+                wrapped_bw_im = batch[1][0].unsqueeze(0)
+                img = validate_generator(wrapped_bw_im, generator)
                 img_list.append(img)
 
 
     return 0
 
 
-def validate_generator(bw_im, generator, padding_sz=2,  norm=True):
+def validate_generator( bw_im, generator, padding_sz=2,  norm=True):
     with torch.no_grad():
         fake_im = generator(bw_im).detach().cpu()
-    img = vutils.make_grid(fake, padding = padding_sz, normalize = norm )
 
-    return img
+        generated = fake_im.data.numpy()
+        generated = generated[0, :, :, :]
+        generated = np.round((generated + 1) * 255 / 2)
+        generated = generated.astype(int)
+
+        # print(generated.transpose())
+        plt.show(plt.imshow( generated.transpose() ))
+
+    #img = vutils.make_grid(fake_im, padding = padding_sz, normalize = norm )
+
+    return generated
 
 
-def criteria_validate_generator(iters, epoch, epochs, current_batch):
-    return (iters % 500 == 0) or ((epoch == epochs - 1) and (current_batch == len(dataloader) - 1))
+def criteria_validate_generator(dataloader, iters, epoch, epochs, current_batch):
+    return (iters % 10 == 0) or ((epoch == epochs - 1) and (current_batch == len(dataloader) - 1))
 
 
-def train_GAN(discriminator,generator,Discriminator_optimizer, Generator_optimizer , batch, batch_gray, true_im_label, false_im_label, current_batch, epoch, iters):
+def train_GAN(discriminator,generator,Discriminator_optimizer, Generator_optimizer , batch, batch_gray, true_im_label, false_im_label, current_batch, epoch, iters, epochs, dataloader, G_losses, D_losses):
     ### update the discriminator ###
     device = "cpu"
     # Train with real colored data
@@ -207,10 +218,7 @@ def train_GAN(discriminator,generator,Discriminator_optimizer, Generator_optimiz
 
     # The loss on the real batch data
 
-    # print(reshape_to_vector(output))
-    # input()
-    # print(labels_real)
-    # input()
+
     D_loss_real = BCE_loss(reshape_to_vector(output), labels_real)
 
     # Compute gradients for D via a backward pass
@@ -220,22 +228,18 @@ def train_GAN(discriminator,generator,Discriminator_optimizer, Generator_optimiz
 
     # Generate fake data - i.e. fake images by inputting black and white images
 
-    # batch_gray = reformat_no_channels(batch_gray)
-    # print(batch_gray)
-    # input()
-    print(batch_gray.shape)
-    print(batch.shape)
-    input()
+
     batch_fake = generator(batch_gray)
 
     # Train with the Discriminator with fake data
 
-    labels_fake = tensor_format_labels(batch_fake, false_im_label)
+    labels_fake = tensor_format_labels(batch_fake, device, false_im_label)
 
     # use detach since  ????
     output = discriminator(batch_fake.detach())
 
     # Compute the loss
+
     D_loss_fake = BCE_loss(reshape_to_vector(output), labels_fake)
 
     D_loss_fake.backward()
@@ -253,8 +257,7 @@ def train_GAN(discriminator,generator,Discriminator_optimizer, Generator_optimiz
     generator.zero_grad()
 
     # format labels into tensor vector
-    labels_real = tensor_format_labels(batch, true_im_label)
-
+    labels_real = tensor_format_labels(batch, device, true_im_label)
 
 
     output = discriminator(batch_fake)
@@ -268,8 +271,8 @@ def train_GAN(discriminator,generator,Discriminator_optimizer, Generator_optimiz
 
     Generator_optimizer.step()
 
-    if current_batch % 50 == 0:
-        print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'% (epoch, num_epochs, i, len(dataloader),errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
+    if current_batch % 5 == 0:
+        print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'% (epoch, epochs, iters, len(dataloader), D_loss.item(), G_loss.item(), D_x, D_G_x1, D_G_x2))
 
         # Save Losses for plotting later
         G_losses.append(G_loss.item())
@@ -280,38 +283,13 @@ def train_GAN(discriminator,generator,Discriminator_optimizer, Generator_optimiz
 
     return iters, G_losses, D_losses
 
-def reformat_no_channels(batch):
-    reformatted_tensors = []
-    it = 0;
-    for b in batch:
-        #print(batch.data[it])
-        print(batch.data[it][1])
-        input()
-        print(print(batch.data[it][0]))
-        input()
-        print(print(batch.data[it][2]))
-        input()
-
-        print(batch.data[it][1].shape)
-        input('klart')
-        #print(batch.data[it][0].shape)
-        reformatted_tensors.append(torch.tensor(batch.data[it][0]))
-        # print(reformatted_tensors)
-        #input()
-        it+=1
-
-    tensors = torch.stack(reformatted_tensors)
-    print(batch)
-    input()
-    return batch
 
 def tensor_format_labels(batch, device, label_vec):
 
     cpu = batch[0].to(device)
     b_size = cpu.size(0)
-    label = torch.full((10,8,8), label_vec, device=device)
+    label = torch.full((b_size-1,8,8), label_vec, device=device)
 
-    input()
     return label
 
 
