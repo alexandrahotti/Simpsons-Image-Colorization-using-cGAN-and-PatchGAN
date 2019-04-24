@@ -22,31 +22,31 @@ class Generator(nn.Module):
         self.conv_1 = nn.Sequential(
         nn.Conv2d(1, 64, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
         nn.BatchNorm2d( 64 ),
-        nn.LeakyReLU( 0.1 )
+        nn.LeakyReLU( 0.2 )
         )
 
         self.conv_2 = nn.Sequential(
         nn.Conv2d(64, 128, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
         nn.BatchNorm2d( 128 ),
-        nn.LeakyReLU( 0.1 )
+        nn.LeakyReLU( 0.2 )
         )
 
         self.conv_3 = nn.Sequential(
         nn.Conv2d(128, 256, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
         nn.BatchNorm2d( 256 ),
-        nn.LeakyReLU( 0.1 )
+        nn.LeakyReLU( 0.2 )
         )
 
         self.conv_4 = nn.Sequential(
         nn.Conv2d(256, 512, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
         nn.BatchNorm2d( 512 ),
-        nn.LeakyReLU( 0.1 )
+        nn.LeakyReLU( 0.2 )
         )
 
         self.conv_5 = nn.Sequential(
         nn.Conv2d(512, 512, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
         nn.BatchNorm2d( 512 ),
-        nn.LeakyReLU( 0.1 )
+        nn.LeakyReLU( 0.2 )
         )
 
 
@@ -145,35 +145,33 @@ class GeneratorWithSkipConnections(nn.Module):
 
         # Encoding layers
         self.conv_1 = nn.Sequential(
-        nn.Conv2d(1, 64, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.Conv2d(1, 64, 6, stride=2, padding=2, bias=False), # in channel, out channel, filter kernel size
         nn.BatchNorm2d( 64 ),
-        nn.LeakyReLU( 0.1 )
+        nn.LeakyReLU( 0.2 )
         )
 
         self.conv_2 = nn.Sequential(
-        nn.Conv2d(64, 128, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.Conv2d(64, 128, 6, stride=2, padding=2, bias=False), # in channel, out channel, filter kernel size
         nn.BatchNorm2d( 128 ),
-        nn.LeakyReLU( 0.1 )
+        nn.LeakyReLU( 0.2 )
         )
 
-
-
         self.conv_3 = nn.Sequential(
-        nn.Conv2d(128, 256, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.Conv2d(128, 256, 4, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
         nn.BatchNorm2d( 256 ),
-        nn.LeakyReLU( 0.1 )
+        nn.LeakyReLU( 0.2 )
         )
 
         self.conv_4 = nn.Sequential(
-        nn.Conv2d(256, 512, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.Conv2d(256, 512, 2, stride=2, padding=0, bias=False), # in channel, out channel, filter kernel size
         nn.BatchNorm2d( 512 ),
-        nn.LeakyReLU( 0.1 )
+        nn.LeakyReLU( 0.2 )
         )
 
         self.conv_5 = nn.Sequential(
-        nn.Conv2d(512, 512, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.Conv2d(512, 512, 2, stride=2, padding=0, bias=False), # in channel, out channel, filter kernel size
         nn.BatchNorm2d( 512 ),
-        nn.LeakyReLU( 0.1 )
+        nn.LeakyReLU( 0.2 )
         )
 
 
@@ -182,32 +180,32 @@ class GeneratorWithSkipConnections(nn.Module):
         #to concat t3 = torch.cat((t1, t2), 1)
 
         self.conv_trans_1 = nn.Sequential(
-        nn.ConvTranspose2d(512, 512, 3, stride=2, padding=1, output_padding=1, bias=False),
+        nn.ConvTranspose2d(512, 512, 2, stride=2, padding=0, output_padding=0, bias=False),
         nn.BatchNorm2d(512),
         nn.ReLU(),
         )
 
 
         self.conv_trans_2 = nn.Sequential(
-        nn.ConvTranspose2d(1024, 256, 3, stride=2, padding=1, output_padding=1, bias=False),
+        nn.ConvTranspose2d(1024, 256, 2, stride=2, padding=0, output_padding=0, bias=False),
         nn.BatchNorm2d(256),
         nn.ReLU(),
         )
 
         self.conv_trans_3 = nn.Sequential(
-        nn.ConvTranspose2d(512, 128, 3, stride=2, padding=1, output_padding=1, bias=False),
+        nn.ConvTranspose2d(512, 128, 4, stride=2, padding=1, output_padding=0, bias=False),
         nn.BatchNorm2d(128),
         nn.ReLU(),
         )
 
         self.conv_trans_4 = nn.Sequential(
-        nn.ConvTranspose2d(256, 64, 3, stride=2, padding=1, output_padding=1, bias=False),
+        nn.ConvTranspose2d(256, 64, 6, stride=2, padding=2, output_padding=0, bias=False),
         nn.BatchNorm2d(64),
         nn.ReLU(),
         )
 
         self.conv_trans_5 = nn.Sequential(
-        nn.ConvTranspose2d(128, 3, 3, stride=2, padding=1, output_padding=1, bias=False),
+        nn.ConvTranspose2d(128, 3, 6, stride=2, padding=2, output_padding=0, bias=False),
         #nn.BatchNorm2d(3),
         nn.Tanh()
         )
@@ -269,16 +267,18 @@ class GeneratorWithSkipConnections(nn.Module):
 
 
 if __name__ == "__main__":
-    gan = Generator()
-    #gan = GeneratorWithSkipConnections()
+    #gan = Generator()
+    gan = GeneratorWithSkipConnections()
     #hl_graph = hl.build_graph(model, torch.zeros([1, 3, 224, 224]))
     #hl_graph = hl.build_graph(gan, torch.zeros([1, 1, 256, 256]))
 
-    image_array = imread('test_im_gray.jpg')
+    image_array = imread('test_im.jpg')
     image_array = np.matrix.transpose(image_array)
     image_array = torch.tensor([[image_array]]) # nu int 32
     image_array = image_array.type('torch.FloatTensor')
-    generated_im = gan.forward(image_array)
+    #generated_im = gan.forward(image_array)
+    output = discriminator(image_array)
+
 
     # generated = generated_im.data.numpy()
     # generated = generated[0,:,:,:]
