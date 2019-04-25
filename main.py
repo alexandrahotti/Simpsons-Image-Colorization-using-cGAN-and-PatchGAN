@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 from discriminator import Discriminator
-from generator import Generator
+from generator import GeneratorWithSkipConnections
 
 import torch
 import torch.nn as nn
@@ -19,7 +19,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.utils.data as torch_data
 import torchvision.datasets as dset
-from torchsample.transforms import RangeNormalize
+#from torchsample.transforms import RangeNormalize
 
 
 from torch.utils.data import Dataset, DataLoader, BatchSampler, SequentialSampler, SubsetRandomSampler
@@ -59,14 +59,14 @@ class SimpsonsDataset(Dataset):
         img_name = os.path.join(self.datafolder,
                                 self.image_files_list[idx])
         img_name_gray = img_name[0:-4] + '_gray.jpg'
+
         image = io.imread(img_name)
         image = self.transform(image)
-        image = (image-127.5)/127.5
+        #image = (image-127.5)/127.5
         image_gray = io.imread(img_name_gray)
         image_gray = self.transform(image_gray)
-        image_gray = (image_gray-127.5)/127.5
+        #image_gray = (image_gray-127.5)/127.5
         return image, image_gray
-
 
 
 
@@ -75,15 +75,16 @@ def loadData():
     workers = 2
 
     # Batch size during training
-    batch_size = 2
+    batch_size = 100
 
 
     #dataroot_train = "C:\\Users\\Alexa\\Desktop\\KTH\\årskurs_4\\DeepLearning\\Assignments\\github\\Deep-Learning-in-Data-Science\\Project\\alex_trainset_22apr\\trainset_gray\\temp"
     #dataroot_train = "C:\\Users\\Alexa\\Desktop\\KTH\\årskurs_4\\DeepLearning\\Assignments\\github\\Deep-Learning-in-Data-Science\\Project\\alex_trainset_22apr\\trainset_gray"
 
     #dataroot_train = "C:\\Users\\Alexa\\Desktop\\KTH\\årskurs_4\\DeepLearning\\Assignments\\github\\Deep-Learning-in-Data-Science\\Project\\Dataset\\trainset"
-    #dataroot_train = "/home/projektet/dataset/trainset/"
-    dataroot_train = "/Users/Marcus/Downloads/kth_simps_gray_v1/trainset"
+    dataroot_train = "/home/projektet/dataset/trainset/"
+    #dataroot_train = "/Users/Marcus/Downloads/kth_simps_gray_v1/trainset"
+    #dataroot_train = "/home/jacob/Documents/DD2424 dataset/trainset/"
 
     trainset = SimpsonsDataset(datafolder = dataroot_train, transform=transforms.Compose([
         transforms.ToTensor()
@@ -156,7 +157,9 @@ def GAN_training():
     D_losses = []
     iters = 0
 
-    for epoch in range(1, epochs):
+    lam = 100
+
+    for epoch in range(0, epochs):
 
         for current_batch, b in enumerate(dataloader):
             #discriminator, generator, Discriminator_optimizer, Generator_optimizer, iters, G_losses, D_losses = train_GAN(discriminator, generator, Discriminator_optimizer, Generator_optimizer , batch[0], batch[1], true_im_label, false_im_label,
@@ -183,15 +186,14 @@ def GAN_training():
             output = discriminator(batch)
 
             # format labels into tensor vector
-            true_im_label = random.uniform(0.9, 1.0)
-            labels_real = tensor_format_labels(batch_size, true_im_label, device) #tensor_format_labels(batch, true_im_label)
-            labels_real = labels_real.to(device)
+            true_im_label_soft = random.uniform(0.9, 1.0)
+            labels_real = torch.full((batch_size,), true_im_label_soft, device=device)
 
             BCE_loss = loss_function(BCE = True)
 
             # The loss on the real batch data
 
-            D_loss_real = BCE_loss(reshape_to_vector(output), labels_real)
+            D_loss_real = BCE_loss(output.squeeze(), labels_real)
 
             # Compute gradients for D via a backward pass
             D_loss_real.backward()
@@ -205,9 +207,9 @@ def GAN_training():
 
             # Train with the Discriminator with fake data
 
-            false_im_label = random.uniform(0.0, 0.1)
+            false_im_label_soft = random.uniform(0.0, 0.1)
 
-            labels_fake = tensor_format_labels(batch_size, false_im_label, device)
+            labels_fake = torch.full((batch_size,), false_im_label_soft, device=device)
 
 
             # use detach since  ????
@@ -215,7 +217,7 @@ def GAN_training():
 
             # Compute the loss
 
-            D_loss_fake = BCE_loss(reshape_to_vector(output), labels_fake)
+            D_loss_fake = BCE_loss(output.squeeze(), labels_fake)
 
             D_loss_fake.backward()
 
@@ -233,26 +235,31 @@ def GAN_training():
 
             # format labels into tensor vector
 
-            labels_real = tensor_format_labels(batch_size, true_im_label, device)
+            labels_real = torch.full((batch_size,), true_im_label, device=device)
 
 
             output = discriminator(batch_fake)
 
             # The generators loss
-            G_loss = BCE_loss(reshape_to_vector(output), labels_real)
+            G_loss_bce = BCE_loss(output.squeeze(), labels_real)
+            L1 = nn.L1Loss()
+            G_loss_L1 = L1(batch_fake.view(batch_fake.size(0),-1), batch.view(batch.size(0),-1))
 
+            G_loss = G_loss_bce + lam * G_loss_L1
             G_loss.backward()
 
             D_G_x2 = output.mean().item()
 
             Generator_optimizer.step()
+            G_losses.append(G_loss.item())
+            D_losses.append(D_loss.item())
 
-            if current_batch % 5 == 0:
+            if current_batch % 50 == 0:
                 print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'% (epoch, epochs, current_batch, len(dataloader), D_loss.item(), G_loss.item(), D_x, D_G_x1, D_G_x2))
                 plot_losses(G_losses, D_losses, epoch, current_batch)
                 # Save Losses for plotting later
-                G_losses.append(G_loss.item())
-                D_losses.append(D_loss.item())
+                #G_losses.append(G_loss.item())
+                #D_losses.append(D_loss.item())
 
 
                 iters += 1
@@ -268,14 +275,14 @@ def GAN_training():
                 img_list.append(img)
 
 
-            # if current_batch == 3:
-            #     file_name_generator = "generator_model"
-            #     file_name_discriminator = "discriminator_model"
-            #
-            #     torch.save(discriminator.state_dict(), "/home/projektet/models/discriminator_model" + "_"  +str(current_batch) + "_" + str(epoch) +  ".pt")
-            #     #torch.save(discriminator_optimizer, model_path)
-            #     torch.save(generator.state_dict(), "/home/projektet/models/generator_model" + "_" + str(current_batch) + "_" + str(epoch) +  ".pt")
-            #     #torch.save(generator_optimizer, model_path)
+            if current_batch == 3 && device != "cpu":
+                file_name_generator = "generator_model"
+                file_name_discriminator = "discriminator_model"
+
+                torch.save(discriminator.state_dict(), "/home/projektet/network_v2/models/discriminator_model" + "_"  +str(current_batch) + "_" + str(epoch) +  ".pt")
+                #torch.save(discriminator_optimizer, model_path)
+                torch.save(generator.state_dict(), "/home/projektet/network_v2/models/generator_model" + "_" + str(current_batch) + "_" + str(epoch) +  ".pt")
+                #torch.save(generator_optimizer, model_path)
 
 
     return 0
