@@ -132,13 +132,13 @@ def GAN_training():
 
     generator = GeneratorWithSkipConnections()  # ngpu) #.to(device) add later to make meory efficient
     generator = generator.to(device)
-    generator.apply(weights_init)
-    #generator.load_state_dict(torch.load("/home/projektet/dataset/models/"))
+    #generator.apply(weights_init)
+    generator.load_state_dict(torch.load("/home/projektet/network_v2/models/generator_model_3_7.pt"))
 
     discriminator = Discriminator()
     discriminator = discriminator.to(device)
-    discriminator.apply(weights_init)
-    #discriminator.load_state_dict(torch.load("/home/projektet/dataset/models/"))
+    #discriminator.apply(weights_init)
+    discriminator.load_state_dict(torch.load("/home/projektet/network_v2/models/discriminator_model_3_7.pt"))
 
     dataloader, batch_size = loadData()
 
@@ -159,7 +159,7 @@ def GAN_training():
 
     lam = 100
 
-    for epoch in range(0, epochs):
+    for epoch in range(7, epochs):
 
         for current_batch, b in enumerate(dataloader):
             #discriminator, generator, Discriminator_optimizer, Generator_optimizer, iters, G_losses, D_losses = train_GAN(discriminator, generator, Discriminator_optimizer, Generator_optimizer , batch[0], batch[1], true_im_label, false_im_label,
@@ -267,15 +267,15 @@ def GAN_training():
             if current_batch == 3:
             #if criteria_validate_generator(dataloader, iters, epoch, epochs, current_batch):
 
-                wrapped_bw_im = batch_gray[-1].unsqueeze(0)
-                save_image(batch_gray[-1], epoch, current_batch, device, False)
-                save_image(batch[-1], epoch, current_batch, device, True)
+                wrapped_bw_im = batch_gray[20].unsqueeze(0)
+                save_image(batch_gray[20], epoch, current_batch, device, False)
+                save_image(batch[20], epoch, current_batch, device, True)
                 wrapped_bw_im = wrapped_bw_im.to(device)
                 img = validate_generator(epoch, current_batch, wrapped_bw_im, generator)
                 img_list.append(img)
 
 
-            if current_batch == 3 && device != "cpu":
+            if current_batch == 3:
                 file_name_generator = "generator_model"
                 file_name_discriminator = "discriminator_model"
 

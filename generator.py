@@ -84,49 +84,49 @@ class Generator(nn.Module):
 
 
     def forward(self, data):
-        print('data.size()')
-        print(data.size())
+        #print('data.size()')
+        #print(data.size())
 
 
         output1 = self.conv_1(data) #10x64x128x128
 
-        print(output1.size())
-        print(type(output1))
+        #print(output1.size())
+        #print(type(output1))
 
         output2 = self.conv_2(output1) #10x128x64x64
-        print(output2.size())
+        #print(output2.size())
 
 
         output3 = self.conv_3(output2) #10x256x32x32
-        print(output3.size())
+        #print(output3.size())
 
         output4 = self.conv_4(output3) #10x512x16x16
-        print(output4.size())
+        #print(output4.size())
 
         output5 = self.conv_5(output4) #10x512x8x8
-        print(output5.size())
+        #print(output5.size())
 
         # Decoding
-        print("decoding")
+        #print("decoding")
 
         output1_de = self.conv_trans_1(output5) #10x512x16x16
-        print(output1_de.size())
+        #print(output1_de.size())
 
         skip1_de = torch.cat((output4, output1_de), 1) #10x1024x16x16
 
         output2_de = self.conv_trans_2(output1_de) #10x256x32x32
-        print(output2_de.size())
+        #print(output2_de.size())
 
 
 
         output3_de = self.conv_trans_3(output2_de) #10x128x64x64
-        print(output3_de.size())
+        #print(output3_de.size())
 
         output4_de = self.conv_trans_4(output3_de) #10x64x128x128
-        print(output4_de.size())
+        #print(output4_de.size())
 
         output5_de = self.conv_trans_5(output4_de) #10x128x64x64
-        print(output5_de.size())
+        #print(output5_de.size())
 
         return output5_de
 
@@ -213,55 +213,55 @@ class GeneratorWithSkipConnections(nn.Module):
 
 
     def forward(self, data):
-        print('data.size()')
-        print(data.size())
+        #print('data.size()')
+        #print(data.size())
 
 
         output1 = self.conv_1(data) #10x64x128x128
 
-        print(output1.size())
-        print(type(output1))
+        #print(output1.size())
+        #print(type(output1))
 
 
 
         output2 = self.conv_2(output1) #10x128x64x64
-        print(output2.size())
+        #print(output2.size())
 
 
         output3 = self.conv_3(output2) #10x256x32x32
-        print(output3.size())
+        #print(output3.size())
 
         output4 = self.conv_4(output3) #10x512x16x16
-        print(output4.size())
+        #print(output4.size())
 
         output5 = self.conv_5(output4) #10x512x8x8
-        print(output5.size())
+        #print(output5.size())
 
         # Decoding
-        print("decoding")
+        #print("decoding")
 
         output1_de = self.conv_trans_1(output5) #10x512x16x16
-        print(output1_de.size())
+        #print(output1_de.size())
 
         skip1_de = torch.cat((output4, output1_de), 1) #10x1024x16x16
 
         output2_de = self.conv_trans_2(skip1_de) #10x256x32x32
-        print(output2_de.size())
+        #print(output2_de.size())
 
         skip2_de = torch.cat((output3, output2_de), 1) #10x512x16x16
 
         output3_de = self.conv_trans_3(skip2_de) #10x128x64x64
-        print(output3_de.size())
+        #print(output3_de.size())
 
         skip3_de = torch.cat((output2, output3_de), 1) #10x256x16x16
 
         output4_de = self.conv_trans_4(skip3_de) #10x64x128x128
-        print(output4_de.size())
+        #print(output4_de.size())
 
         skip4_de = torch.cat((output1, output4_de), 1) #10x128x16x16
 
         output5_de = self.conv_trans_5(skip4_de) #10x128x64x64
-        print(output5_de.size())
+        #print(output5_de.size())
 
         return output5_de
 
