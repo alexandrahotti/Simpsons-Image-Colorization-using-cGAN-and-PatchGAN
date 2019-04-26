@@ -40,7 +40,7 @@ torch.manual_seed(seed)
 from torch.utils.data import Dataset
 
 class SimpsonsDataset(Dataset):
-    def __init__(self, datafolder, transform = None):
+    def __init__(self, datafolder, transform = None, rgb = True ):
         self.datafolder = datafolder
         all_files_list = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(datafolder)) for f in fn]
         #self.image_files_list = [s for s in os.listdir(datafolder) if
@@ -50,6 +50,7 @@ class SimpsonsDataset(Dataset):
 
         # Same for the labels files
         self.transform = transform
+        self.rgb = rgb
 
     def __len__(self):
         return len(self.image_files_list)
@@ -58,16 +59,26 @@ class SimpsonsDataset(Dataset):
         img_name = os.path.join(self.datafolder,
                                 self.image_files_list[idx])
         img_name_gray = img_name[0:-4] + '_gray.jpg'
-
         image = io.imread(img_name)
-        image = self.transform(image)
-        #image = (image-127.5)/127.5
-        image_gray = io.imread(img_name_gray)
-        image_gray = self.transform(image_gray)
-        #image_gray = (image_gray-127.5)/127.5
-        return image, image_gray, img_name, img_name_gray
 
+        if self.rgb:
+            image = self.transform(image)
+            img_name_gray = img_name[0:-4] + '_gray.jpg'
+            image_gray = io.imread(img_name_gray)
+            image_gray = self.transform(image_gray)
+            return image, image_gray, img_name, img_name_gray
 
+        else:
+            #lab
+            image_lab = color.rgb2lab(np.array(image)) # np array
+            image_l = image_lab[:,:,[0]]
+            image_ab = image_lab[:,:,[1,2]]
+
+            image = self.transform(image)
+            image_l = self.transform(image_l)
+            image_ab = self.transform(image_ab)
+
+            return image, image_l, image_ab, img_name, img_name_gray
 
 def loadData():
     # Number of workers for dataloader
@@ -86,7 +97,7 @@ def loadData():
 
     trainset = SimpsonsDataset(datafolder = dataroot_train, transform=transforms.Compose([
         transforms.ToTensor()
-    ]))
+    ]), rgb = False))
 
     dataloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,shuffle=True, num_workers=workers)
 
@@ -171,8 +182,8 @@ def GAN_training():
             batch  = batch.to(device)
             batch_gray = b[1]
             batch_gray  = batch_gray.to(device)
-            grey_file = b[3]
-            color_file = b[2]
+            grey_file = b[4]
+            color_file = b[3]
 
 
             ### update the discriminator ###
