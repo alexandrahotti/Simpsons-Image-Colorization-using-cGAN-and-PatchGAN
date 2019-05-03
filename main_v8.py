@@ -89,7 +89,7 @@ def loadData():
     workers = 2
 
     # Batch size during training
-    batch_size = 56
+    batch_size = 8
 
 
     #dataroot_train = "C:\\Users\\Alexa\\Desktop\\KTH\\årskurs_4\\DeepLearning\\Assignments\\github\\Deep-Learning-in-Data-Science\\Project\\alex_trainset_22apr\\trainset_gray\\temp"
@@ -130,17 +130,32 @@ def convert_rgb_to_lab(img_rgb):
 
     return image_l
 
-def optimizers(generator, discriminator, learningrate=2e-4, amsgrad=False, b=0.5, momentum=0.9):
+# def optimizers(generator, discriminator, learningrate=2e-4, amsgrad=False, b=0.5, momentum=0.9):
+#     # https://pytorch.org/docs/stable/_modules/torch/optim/adam.html
+#     # Use adam for generator and SGD for discriminator. source: https://github.com/soumith/ganhacks
+#     lr_disc = learningrate/2
+#     lr_gen = learningrate/2
+#     Discriminator_optimizer = optim.SGD(
+#         discriminator.parameters(), lr=lr_disc, momentum=momentum)
+#     Generator_optimizer = optim.Adam(
+#         generator.parameters(), lr=lr_gen, betas=(b, 0.999))
+#
+#     return Discriminator_optimizer, Generator_optimizer
+
+def optimizers(generator, discriminator1, learningrate=2e-4, amsgrad=False, b=0.9, momentum=0.9):
     # https://pytorch.org/docs/stable/_modules/torch/optim/adam.html
     # Use adam for generator and SGD for discriminator. source: https://github.com/soumith/ganhacks
-    lr_disc = learningrate/2
-    lr_gen = learningrate/2
-    Discriminator_optimizer = optim.SGD(
-        discriminator.parameters(), lr=lr_disc, momentum=momentum)
-    Generator_optimizer = optim.Adam(
-        generator.parameters(), lr=lr_gen, betas=(b, 0.999))
 
-    return Discriminator_optimizer, Generator_optimizer
+
+    Discriminator1_optimizer = optim.Adam(
+        discriminator1.parameters(), lr=0.001, betas=(0.5, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+
+
+    Generator_optimizer = optim.Adam(
+        generator.parameters(), lr=0.001, betas=(0.5, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+
+    return Discriminator1_optimizer , Generator_optimizer
+
 
 
 def loss_function(BCE):
@@ -153,8 +168,8 @@ def loss_function(BCE):
 
 def get_labels():
 
-    true_im = 0
-    false_im = 1
+    true_im = 1
+    false_im = 0
 
     return true_im, false_im
 
@@ -210,7 +225,7 @@ def GAN_training():
     G_losses_val = []
     iters = 0
 
-    lam = 100
+    lam = 0.2
 
     min_patch_func = update_patch_function(0)
 
@@ -224,7 +239,7 @@ def GAN_training():
         #for current_batch, b in enumerate(dataloader):
 
         #for current_batch,((image, image_gray, img_name, img_name_gray), (image_val, image_gray_val, img_name_val, img_name_gray_val)) in enumerate(zip(dataloader, dataloader_validation)):
-        for current_batch,((image, image_l, image_lab, img_name, img_name_gray, image_tanh), (image_val, image_l_val, img_lab_val, img_name_val, img_name_gray_val, image_tanh_val)) in enumerate(zip(dataloader, dataloader_validation)):
+        for current_batch,((image, image_l, image_lab, img_name, img_name_gray, image_tanh), (image_val, image_l_val, image_lab_val, img_name_val, img_name_gray_val, image_tanh_val)) in enumerate(zip(dataloader, dataloader_validation)):
         #for current_batch, (image, image_l, image_ab, img_name, img_name_gray) in enumerate(dataloader):
 
             # batch = b[0]
@@ -236,6 +251,8 @@ def GAN_training():
             image_l = image_l.to(device)
             image_lab = image_lab.to(device)
             image_tanh = image_tanh.to(device)
+
+
 
 
             #
@@ -263,8 +280,11 @@ def GAN_training():
                 output = torch.mean(output, dim = 3).mean( dim = 2 ).squeeze(1)
 
             # format labels into tensor vector
-            true_im_label_soft = random.uniform(0.9, 1.0)
-            labels_real = torch.full((batch_size,), true_im_label_soft, device=device)
+            #true_im_label_soft = random.uniform(0.9, 1.0)
+            labels_real = torch.tensor([random.uniform(0.8, 1.0) for _ in range(batch_size)]).to(device)
+            #labels_real = torch.full((batch_size,), true_im_label_soft, device=device)
+            #print(labels_real)
+            #print(true_im_label_soft2.shape)
 
             BCE_loss = loss_function(BCE = True)
 
@@ -283,15 +303,14 @@ def GAN_training():
             batch_fake = generator(image_l.float())
 
             # change range from [-1, 1] to LAB range so L1 can be computed
-            #batch_fake_lab = change_range_lab_batch(batch_fake)
-
+            batch_fake_lab = change_range_lab_batch(batch_fake).to(device)
 
             # Train with the Discriminator with fake data
 
             #false_im_label_soft = random.uniform(0.0, 0.1)
-            false_im_label_soft = random.uniform(0.0, 0.1)
+            #false_im_label_soft = random.uniform(0.0, 0.1)
 
-            labels_fake = torch.full((batch_size,), false_im_label_soft, device=device)
+            labels_fake = torch.full((batch_size,), false_im_label, device=device)
 
 
             # use detach since  ????
@@ -326,9 +345,10 @@ def GAN_training():
             labels_real = torch.full((batch_size,), true_im_label, device=device)
 
 
+
             output = discriminator(batch_fake)
             if min_patch_func:
-                output = output = torch.min(output, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
+                output = torch.min(output, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
 
             else:
                 output = torch.mean(output, dim = 3).mean( dim = 2 ).squeeze(1)
@@ -338,7 +358,7 @@ def GAN_training():
             G_loss_bce = BCE_loss(output, labels_real)
             L1 = nn.L1Loss()
 
-            G_loss_L1 = L1(batch_fake.view(batch_fake.size(0),-1), image_tanh.view(image_tanh.size(0),-1).float())
+            G_loss_L1 = L1(batch_fake_lab.view(batch_fake_lab.size(0),-1), image_lab.view(image_lab.size(0),-1).float())
             #print("G_loss_bce", G_loss_bce)
             #print("G_loss_L1", G_loss_L1)
             G_loss = G_loss_bce + lam * G_loss_L1
@@ -370,7 +390,7 @@ def GAN_training():
 
             image_val = image_val.to(device)
             image_l_val = image_l_val.to(device)
-            img_lab_val = img_lab_val.to(device)
+            image_lab_val = image_lab_val.to(device)
             image_tanh_val = image_tanh_val.to(device)
 
 
@@ -390,8 +410,8 @@ def GAN_training():
             #mean_output = torch.mean(output_val, dim = 3).mean( dim = 2 ).squeeze(1)
 
             # format labels into tensor vector
-            true_im_label_soft = random.uniform(0.9, 1.0)
-            labels_real_val = torch.full((int(batch_size/4),), true_im_label_soft, device=device)
+
+            labels_real_val = torch.full((int(batch_size/4),), true_im_label, device=device)
 
             # The loss on the real batch data
 
@@ -401,13 +421,14 @@ def GAN_training():
             batch_fake_val = generator(image_l_val.float())
 
             # change range from [-1, 1] to LAB range so L1 can be computed
-            # batch_fake_val_lab = change_range_lab_batch(batch_fake_val)
+            batch_fake_val_lab = change_range_lab_batch(batch_fake_val).to(device)
 
             # Train with the Discriminator with fake data
 
-            false_im_label_soft = random.uniform(0.0, 0.1)
 
-            labels_fake_val = torch.full((int(batch_size/4),), false_im_label_soft, device=device)
+
+            labels_fake_val = torch.full((int(batch_size/4),), false_im_label, device=device)
+
 
             # use detach since  ????
             output1_val = discriminator(batch_fake_val.detach())
@@ -446,7 +467,7 @@ def GAN_training():
             # The generators loss
             G1_loss_bce_val = BCE_loss(output2_val, labels_real_val)
             L1_val = nn.L1Loss()
-            G_loss_L1_val = L1(batch_fake_val.view(batch_fake_val.size(0),-1), image_tanh_val.view(image_tanh_val.size(0),-1).float())
+            G_loss_L1_val = L1(batch_fake_val_lab.view(batch_fake_val_lab.size(0),-1), image_lab_val.view(image_lab_val.size(0),-1).float())
 
 
             G_loss_val = G1_loss_bce_val + lam * G_loss_L1_val
@@ -457,9 +478,9 @@ def GAN_training():
 
             ##############################################
 
-            print('[%d/%d][%d/%d]\tLoss_D1: %.4f\tLoss_G: %.4f'% (epoch, epochs, current_batch, len(dataloader), D_loss_val.item(), G_loss_val.item()))
+            #print('[%d/%d][%d/%d]\tLoss_D1: %.4f\tLoss_G: %.4f'% (epoch, epochs, current_batch, len(dataloader), D_loss_val.item(), G_loss_val.item()))
             if current_batch % 50 == 0:
-                #print('[%d/%d][%d/%d]\tLoss_D1: %.4f\tLoss_G: %.4f'% (epoch, epochs, current_batch, len(dataloader), D_loss_val.item(), G_loss_val.item()))
+                print('[%d/%d][%d/%d]\tLoss_D1: %.4f\tLoss_G: %.4f'% (epoch, epochs, current_batch, len(dataloader), D_loss_val.item(), G_loss_val.item()))
 
                 plot_losses(G_losses, D_losses, G_losses_val, D_losses_val, epoch, current_batch)
 
@@ -519,11 +540,14 @@ def validate_generator(path,device,epoch, current_batch, bw_im, generator, paddi
     with torch.no_grad():
         fake_im = generator(bw_im.float()).detach().cpu()
 
+
+
     bw_im = bw_im.squeeze(0)
     fake_im = change_range_ab(fake_im)
     #fake_im = fake_im.squeeze()
     img_rgb = convert_lab_to_rgb(fake_im.to(device))
-    img = vutils.make_grid(img_rgb, padding = padding_sz, normalize = norm )
+    plt.axis("off")
+    img = vutils.make_grid(img_rgb, padding = 0, normalize = norm )
     plt.imshow(np.transpose(img,(1,2,0)), animated=True)
 
     plt.savefig(path + str(epoch) + "_" + str(current_batch) + "_color_generated.png")
@@ -553,7 +577,7 @@ def change_range_ab(im_lab):
 
     generated = im_lab.data.numpy()
     #NewValue = (((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin
-
+    #print(generated.shape)
 
     l = l_lower +  (generated[0,0,:,:] - (-1)) * (l_upper-l_lower) / (1 - (-1)) #).astype(int)
     a = a_lower +  (generated[0,1,:,:] - (-1)) * (a_upper-a_lower) / (1 - (-1)) #).astype(int)
@@ -582,13 +606,14 @@ def change_range_lab_batch(im_lab):
 
 
     #from training set
+    #
     # a_upper = 93.2470357189119
     # a_lower = -86.18302974439501
     # #---
     # b_upper = 94.47812227647825
     # b_lower = -106.24797040432395
 
-    generated = im_lab.data.numpy()
+    generated = im_lab.data.cpu().numpy()
     #NewValue = (((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin
 
 
@@ -652,7 +677,7 @@ def change_range_lab_to_tanh_batch(im_lab):
 def read_gray_img(image_name_gray):
     #to be able to save a gray image, you first have to read itself.
     # hashtag logic life
-    print(str(image_name_gray))
+
     transform = transforms.ToTensor()
     image_gray = io.imread(str(image_name_gray))
     image_gray = transform(image_gray)
@@ -673,31 +698,46 @@ def criteria_validate_generator(dataloader, iters, epoch, epochs, current_batch)
 def convert_lab_to_rgb(image_ab):
 
 
-    lab = np.array(image_ab.cpu())
-    l = lab[0,:,:]
-    a = lab[1,:,:]
-    b = lab[2,:,:]
+    lab = image_ab.cpu()
+    l = lab[0,:,:].unsqueeze(2)
+    a = lab[1,:,:].unsqueeze(2)
+    b = lab[2,:,:].unsqueeze(2)
+
+    lab_t1 = torch.cat((l,a), 2)
+    lab_t = np.array(torch.cat((lab_t1, b), 2))
 
 
-    img_jacob = color.lab2xyz(np.transpose(np.array(lab)))
 
 
-    z = img_jacob[:,:,2]
+    # img_jacob = color.lab2xyz(np.transpose(np.array(lab)))
+    # print(img_jacob.shape)
+    #
+    #
+    # z = img_jacob[:,:,2]
+    #
+    # #if z<o, set z to 0
+    # if np.any(z < 0):
+    #     invalid = np.nonzero(z < 0)
+    #     z[invalid] = 0
+    #
+    # img_jacob[:,:,2] = z
 
-    #if z<o, set z to 0
-    if np.any(z < 0):
-        invalid = np.nonzero(z < 0)
-        z[invalid] = 0
 
-    img_jacob[:,:,2] = z
+    img_concat = torch.tensor(color.lab2rgb(lab_t))
 
 
-    #img_concat = color.lab2rgb(np.transpose(np.array(img_concat)))
+    r = img_concat[:,:,0].unsqueeze(0)
+    g = img_concat[:,:,1].unsqueeze(0)
+    b = img_concat[:,:,2].unsqueeze(0)
 
-    img_concat = color.xyz2rgb(img_jacob)
+
+    lab_t1 = torch.cat((r,g), 0)
+    lab_t = torch.cat((lab_t1, b), 0)
+
+    #img_concat = color.xyz2rgb(img_jacob)
 
     #convert back to tensor to plot
-    img_rgb = torch.tensor(np.transpose(img_concat))
+    img_rgb = lab_t#torch.tensor(lab_t)
 
     return img_rgb
 
@@ -738,9 +778,9 @@ def save_image(img, epoch, current_batch, device, color):
     """ Saves a black and white image
     """
 
-    plt.figure(figsize=(8,8))
+    plt.figure()
     plt.axis("off")
-    plt.imshow(np.transpose(vutils.make_grid(img.to(device)[:64], padding=2, normalize=True).cpu(),(1,2,0)))
+    plt.imshow(np.transpose(vutils.make_grid(img.to(device)[:64], padding=0, normalize=True).cpu(),(1,2,0)))
     #path = "/home/jacob/Documents/DD2424 projekt/lab/l_to_lab/"
     if(color):
         #plt.savefig(path + "result_pics/" +str(epoch) + "_" + str(current_batch) + "_color.png")
