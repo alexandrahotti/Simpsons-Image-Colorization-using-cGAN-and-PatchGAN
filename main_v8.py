@@ -86,7 +86,7 @@ class SimpsonsDataset(Dataset):
 
 def loadData():
     # Number of workers for dataloader
-    workers = 2
+    workers = 4
 
     # Batch size during training
     batch_size = 8
@@ -101,7 +101,7 @@ def loadData():
     dataroot_test = "/home/projektet/dataset/testset/"
     dataroot_val = "/home/projektet/dataset/validationset/"
 
-    #
+
     # dataroot_train = "/home/jacob/Documents/DD2424 dataset/trainset/"
     # dataroot_test = "/home/jacob/Documents/DD2424 dataset/testset/"
     # dataroot_val = "/home/jacob/Documents/DD2424 dataset/validationset/"
@@ -142,19 +142,18 @@ def convert_rgb_to_lab(img_rgb):
 #
 #     return Discriminator_optimizer, Generator_optimizer
 
-def optimizers(generator, discriminator1, learningrate=2e-4, amsgrad=False, b=0.9, momentum=0.9):
+def optimizers(generator, discriminator, learningrate=2e-4, amsgrad=False, b=0.5, momentum=0.9):
     # https://pytorch.org/docs/stable/_modules/torch/optim/adam.html
     # Use adam for generator and SGD for discriminator. source: https://github.com/soumith/ganhacks
-
-
-    Discriminator1_optimizer = optim.Adam(
-        discriminator1.parameters(), lr=0.001, betas=(0.5, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
-
-
+    # lr_disc = learningrate/2
+    # lr_gen = learningrate/2
+    Discriminator_optimizer = optim.SGD(
+        discriminator.parameters(), lr = 2e-4*2, momentum=momentum)
     Generator_optimizer = optim.Adam(
-        generator.parameters(), lr=0.001, betas=(0.5, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+        generator.parameters(), lr=learningrate, betas=(b, 0.999))
 
-    return Discriminator1_optimizer , Generator_optimizer
+    return Discriminator_optimizer, Generator_optimizer
+
 
 
 
@@ -185,13 +184,15 @@ def GAN_training():
 
 
     #jacobs path
-    path = "/home/jacob/Documents/DD2424 projekt/lab/l_to_lab/"
+    path = "/home/jacob/Documents/DD2424 projekt/fixed_nw8/Colorization-using-a-Conditional-GAN-network_v8/"
 
     device_string = str(device)
     if device_string != "cpu":
         #we are in the cloud
 
         path = "/home/projektet/" + network_v +"/"
+
+    path = "/home/projektet/" + network_v +"/"
 
     generator = GeneratorWithSkipConnections()  # ngpu) #.to(device) add later to make meory efficient
     generator = generator.to(device)
@@ -225,7 +226,7 @@ def GAN_training():
     G_losses_val = []
     iters = 0
 
-    lam = 0.2
+    lam = 0.5
 
     min_patch_func = update_patch_function(0)
 
@@ -242,6 +243,8 @@ def GAN_training():
         for current_batch,((image, image_l, image_lab, img_name, img_name_gray, image_tanh), (image_val, image_l_val, image_lab_val, img_name_val, img_name_gray_val, image_tanh_val)) in enumerate(zip(dataloader, dataloader_validation)):
         #for current_batch, (image, image_l, image_ab, img_name, img_name_gray) in enumerate(dataloader):
 
+
+
             # batch = b[0]
             # batch  = batch.to(device)
             # batch_gray = b[1]
@@ -252,29 +255,22 @@ def GAN_training():
             image_lab = image_lab.to(device)
             image_tanh = image_tanh.to(device)
 
+            #go from RGB -> LAB -> [0,1]
+            image_normalized_lab = normalize_img(image_lab)
 
+            #go from RGB - > L -> [0,1]
+            image_normalized_l = normalize_img_l(image_l)
 
-
-            #
-            # grey_file = img_name_gray
-            # color_file = img_name
-
-
-            ### update the discriminator ###
-            #device = "cpu"
-
-            # Train with real colored data
 
             discriminator.zero_grad()
 
             # forward pass
 
-            output = discriminator(image.float())
+            #discriminator should take in a lab image.
+            output = discriminator(image_normalized_lab.float())
 
             if min_patch_func:
                 output = torch.min(output, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
-
-
 
             else:
                 output = torch.mean(output, dim = 3).mean( dim = 2 ).squeeze(1)
@@ -300,10 +296,14 @@ def GAN_training():
             # Generate fake data - i.e. fake images by inputting black and white images
 
 
-            batch_fake = generator(image_l.float())
 
-            # change range from [-1, 1] to LAB range so L1 can be computed
+            batch_fake = generator(image_normalized_l.float())
+
+            # change range from [-1, 1] to LAB range
             batch_fake_lab = change_range_lab_batch(batch_fake).to(device)
+
+            # go from [-1,1] to [0,1]
+            normalized_batch_fake = (((batch_fake + 1 ) * (1)) / (2))
 
             # Train with the Discriminator with fake data
 
@@ -314,7 +314,7 @@ def GAN_training():
 
 
             # use detach since  ????
-            output = discriminator(batch_fake.detach())
+            output = discriminator(normalized_batch_fake.detach())
 
             if min_patch_func:
                 output = torch.min(output, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
@@ -346,7 +346,7 @@ def GAN_training():
 
 
 
-            output = discriminator(batch_fake)
+            output = discriminator(normalized_batch_fake)
             if min_patch_func:
                 output = torch.min(output, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
 
@@ -393,12 +393,16 @@ def GAN_training():
             image_lab_val = image_lab_val.to(device)
             image_tanh_val = image_tanh_val.to(device)
 
+            #go from RGB -> LAB -> [0,1]
+            image_normalized_lab_val = normalize_img(image_lab_val)
 
+            #go from RGB - > L -> [0,1]
+            image_normalized_l_val = normalize_img_l(image_l_val)
 
 
 
             # forward pass
-            output_val = discriminator(image_val.float())
+            output_val = discriminator(image_normalized_lab_val.float())
 
             if min_patch_func:
                 output_val = torch.min(output_val, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
@@ -418,10 +422,14 @@ def GAN_training():
             D1_loss_real_val = BCE_loss(output_val, labels_real_val)
 
             # Generate fake data - i.e. fake images by inputting black and white images
-            batch_fake_val = generator(image_l_val.float())
+            batch_fake_val = generator(image_normalized_l_val.float())
 
             # change range from [-1, 1] to LAB range so L1 can be computed
             batch_fake_val_lab = change_range_lab_batch(batch_fake_val).to(device)
+
+            # go from [-1,1] to [0,1]
+            normalized_batch_fake_val = (((batch_fake_val + 1 ) * (1)) / (2))
+
 
             # Train with the Discriminator with fake data
 
@@ -431,7 +439,7 @@ def GAN_training():
 
 
             # use detach since  ????
-            output1_val = discriminator(batch_fake_val.detach())
+            output1_val = discriminator(normalized_batch_fake_val.detach())
             #mean_output = torch.mean(output1_val, dim = 3).mean( dim = 2 ).squeeze(1)
             if min_patch_func:
                 output1_val = torch.min(output1_val, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
@@ -446,14 +454,11 @@ def GAN_training():
 
             D_loss_val = D1_loss_fake_val + D1_loss_real_val
 
-
-
-
             # Generator loss
 
             labels_real_val = torch.full((int(batch_size/4),), true_im_label, device=device)
 
-            output2_val = discriminator(batch_fake_val)
+            output2_val = discriminator(normalized_batch_fake_val)
 
             if min_patch_func:
                 output2_val = torch.min(output2_val, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
@@ -482,7 +487,8 @@ def GAN_training():
             if current_batch % 50 == 0:
                 print('[%d/%d][%d/%d]\tLoss_D1: %.4f\tLoss_G: %.4f'% (epoch, epochs, current_batch, len(dataloader), D_loss_val.item(), G_loss_val.item()))
 
-                plot_losses(G_losses, D_losses, G_losses_val, D_losses_val, epoch, current_batch)
+                #plot_losses(G_losses, D_losses, G_losses_val, D_losses_val, epoch, current_batch)
+                plot_losses(path, G_losses, D_losses, G_losses_val, D_losses_val, epoch, current_batch)
 
 
 
@@ -491,11 +497,16 @@ def GAN_training():
             if current_batch % 100 == 0:
 
                 image_gray_val = read_gray_img(img_name_gray_val[-1])
-                save_image(image_gray_val, epoch, current_batch, device, False)
-                save_image(image_val[-1], epoch, current_batch, device, True)
+
+                save_image(path, image_gray_val, epoch, current_batch, device, False)
+                save_image(path, image_val[-1], epoch, current_batch, device, True)
+                #
+                # save_image(image_gray_val, epoch, current_batch, device, False)
+                # save_image(image_val[-1], epoch, current_batch, device, True)
 
                 #plot_losses(G_losses, D_losses, epoch, current_batch)
-                wrapped_bw_im = image_l_val[-1].unsqueeze(0)
+                #wrapped_bw_im = image_l_val[-1].unsqueeze(0)
+                wrapped_bw_im = image_normalized_l_val[-1].unsqueeze(0)
                 wrapped_bw_im = wrapped_bw_im.to(device)
                 #img_rgb = convert_lab_to_rgb(image_l[-1], image_ab[-1])
 
@@ -507,7 +518,7 @@ def GAN_training():
                 #reference_list.append(reference_img)
 
 
-            if current_batch == 5:
+            if current_batch == 0:
                 file_name_generator = "generator_model"
 
                 file_name_discriminator = "discriminator_model"
@@ -524,6 +535,12 @@ def GAN_training():
 
                 torch.save(generator.state_dict(), path + "models/" + file_name_generator +"_" + str(current_batch) + "_" + str(epoch) +  ".pt")
                 torch.save(Generator_optimizer, path + "models/" + file_name_generator_optimizer + "_"  +str(current_batch) + "_" + str(epoch) +  ".pt")
+
+
+                np.save(path +"G_losses.npy", G_losses)
+                np.save(path + "D_losses.npy", D_losses)
+                np.save(path + "G_losses_val.npy", G_losses_val)
+                np.save(path + "D_losses_val.npy", D_losses_val)
 
             # Set the mode of the discriminator to training
             discriminator = discriminator.train()
@@ -555,6 +572,102 @@ def validate_generator(path,device,epoch, current_batch, bw_im, generator, paddi
 
 
     return img
+
+
+def normalize_img(image_in):
+    #change so that the input image (which is in LAB space) is in [0,1] instead of [LAB]
+
+
+    NewMax = 1
+    NewMin = 0
+    #from training set
+    #
+    # a_upper = 93.2470357189119
+    # a_lower = -86.18302974439501
+    # #---
+    # b_upper = 94.47812227647825
+    # b_lower = -106.24797040432395
+    l_lower = 0
+    l_upper = 100
+    a_lower = -86.125
+    a_upper = 98.254
+    b_lower = -107.863
+    b_upper = 94.482
+
+
+    image_in = image_in.data.numpy()
+
+
+
+
+
+    #NewValue = (((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin
+
+    l = torch.tensor(NewMin  +  ((image_in[:,0,:,:] - l_lower) * (NewMax-NewMin) / (l_upper - l_lower))).unsqueeze(1) #).astype(int)
+    a = torch.tensor(NewMin  +  ((image_in[:,1,:,:] - a_lower) * (NewMax-NewMin) / (a_upper - a_lower))).unsqueeze(1) #).astype(int)
+    b = torch.tensor(NewMin  +  ((image_in[:,2,:,:] - b_lower) * (NewMax-NewMin) / (b_upper - b_lower))).unsqueeze(1) #).astype(int)
+
+
+    #l = torch.tensor(l_lower +  (generated[:,0,:,:] - (-1)) * (l_upper-l_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
+    # a = torch.tensor(a_lower +  (generated[:,1,:,:] - (-1)) * (a_upper-a_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
+    # b = torch.tensor(b_lower +  (generated[:,2,:,:] - (-1)) * (b_upper-b_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
+    # #b = generated[0,1,:,:] * (b_upper-b_lower) + b_lower#.astype(int)
+    #image_ab = generated[0,:,:,:] + 1) * 255 / 2
+
+    # print("min l ", np.min(np.array(l)))
+    # print("min a ", np.min(np.array(a)))
+    # print("min b ", np.min(np.array(b)))
+
+
+    img_concat = torch.cat((l, a), 1).cpu()
+
+
+    image_lab = torch.cat((img_concat, b), 1).cpu()
+
+    return image_lab
+
+def normalize_img_l(image_in):
+    #change so that the input image (which is in L space) is in [0,1] instead of [LAB]
+
+
+    NewMax = 1
+    NewMin = 0
+    #from training set
+    #
+    # a_upper = 93.2470357189119
+    # a_lower = -86.18302974439501
+    # #---
+    # b_upper = 94.47812227647825
+    # b_lower = -106.24797040432395
+    l_lower = 0
+    l_upper = 100
+
+
+
+    image_in = image_in.data.numpy()
+
+    #NewValue = (((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin
+
+    l = torch.tensor(NewMin  +  ((image_in[:,:,:,:] - l_lower) * (NewMax-NewMin) / (l_upper - l_lower))) #).astype(int)
+
+    #l = torch.tensor(l_lower +  (generated[:,0,:,:] - (-1)) * (l_upper-l_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
+    # a = torch.tensor(a_lower +  (generated[:,1,:,:] - (-1)) * (a_upper-a_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
+    # b = torch.tensor(b_lower +  (generated[:,2,:,:] - (-1)) * (b_upper-b_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
+    # #b = generated[0,1,:,:] * (b_upper-b_lower) + b_lower#.astype(int)
+    #image_ab = generated[0,:,:,:] + 1) * 255 / 2
+
+    # print("min l ", np.min(np.array(l)))
+    # print("min a ", np.min(np.array(a)))
+    # print("min b ", np.min(np.array(b)))
+
+
+
+
+    return l
+
+
+
+
 
 def change_range_ab(im_lab):
     #https://stackoverflow.com/questions/19099063/what-are-the-ranges-of-coordinates-in-the-cielab-color-space
@@ -773,8 +886,7 @@ def convert_lab_to_rgb_batch(image_lab_batch):
     return img_rgb_batch
 
 
-
-def save_image(img, epoch, current_batch, device, color):
+def save_image(path, img, epoch, current_batch, device, color):
     """ Saves a black and white image
     """
 
@@ -783,27 +895,27 @@ def save_image(img, epoch, current_batch, device, color):
     plt.imshow(np.transpose(vutils.make_grid(img.to(device)[:64], padding=0, normalize=True).cpu(),(1,2,0)))
     #path = "/home/jacob/Documents/DD2424 projekt/lab/l_to_lab/"
     if(color):
-        #plt.savefig(path + "result_pics/" +str(epoch) + "_" + str(current_batch) + "_color.png")
-        plt.savefig("/home/projektet/network_v8/result_pics/" +str(epoch) + "_" + str(current_batch) + "_color.png")
+        plt.savefig(path + "result_pics/"+ str(epoch) + "_" + str(current_batch) + "_color.png")
+        # plt.savefig("/home/projektet/network_v8/result_pics/" +str(epoch) + "_" + str(current_batch) + "_color.png")
     else:
-        #plt.savefig(path + "result_pics/" +str(epoch) + "_" + str(current_batch) + "_BW.png")
-        plt.savefig("/home/projektet/network_v8/result_pics/" +str(epoch) + "_" + str(current_batch) + "_BW.png")
+        plt.savefig(path + "result_pics/"+ str(epoch) + "_" + str(current_batch) + "_BW.png")
+        # plt.savefig("/home/projektet/network_v8/result_pics/" +str(epoch) + "_" + str(current_batch) + "_BW.png")
     #plt.clf()
     plt.close()
 
     #plt.show()
 
-def plot_losses(G_losses, D_losses, G_losses_val, D_losses_val, epoch, current_batch):
+def plot_losses(path, G_losses, D_losses, G_losses_val, D_losses_val, epoch, current_batch):
 
     """ creates two plots. One for the Generator loss and one for the Discriminator loss and saves these figures
     """
     D_loss_fig = plt.figure('D_cost' + str(epoch) + '_' + str(current_batch))
     plt.plot(D_losses, color='b', linewidth=1.5, label='D cost training')  # axis=0
     plt.plot(D_losses_val, color='purple', linewidth=1.5, label='D cost validation')  # axis=0
-    plt.legend(loc='upper right')
-    D_loss_fig.savefig('/home/projektet/network_v8/plots/D_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=D_loss_fig.dpi)
+    plt.legend(loc='upper left')
+    #D_loss_fig.savefig('/home/projektet/network_v8/plots/D_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=D_loss_fig.dpi)
     #path = "/home/jacob/Documents/DD2424 projekt/lab/l_to_lab/"
-    #D_loss_fig.savefig(path + 'plots/D_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=D_loss_fig.dpi)
+    D_loss_fig.savefig(path + 'plots/'+ 'D_cost.png', dpi=D_loss_fig.dpi)
     #plt.clf()
     plt.close(D_loss_fig)
 
@@ -812,11 +924,58 @@ def plot_losses(G_losses, D_losses, G_losses_val, D_losses_val, epoch, current_b
     G_loss_fig = plt.figure('G cost' + str(epoch) + '_' + str(current_batch))
     plt.plot(G_losses, color='b', linewidth=1.5, label='G cost training')  # axis=0
     plt.plot(G_losses_val, color='purple', linewidth=1.5, label='G cost validation')  # axis=0
-    plt.legend(loc='upper right')
-    G_loss_fig.savefig('/home/projektet/network_v8/plots/G_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=G_loss_fig.dpi)
-    #G_loss_fig.savefig(path + 'plots/G_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=G_loss_fig.dpi)
+    plt.legend(loc='upper left')
+    # G_loss_fig.savefig('/home/projektet/network_v8/plots/G_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=G_loss_fig.dpi)
+    G_loss_fig.savefig(path + 'plots/'+ 'G_cost.png', dpi=G_loss_fig.dpi)
     #plt.clf()
     plt.close(G_loss_fig)
+
+
+
+
+# def save_image(img, epoch, current_batch, device, color):
+#     """ Saves a black and white image
+#     """
+#
+#     plt.figure()
+#     plt.axis("off")
+#     plt.imshow(np.transpose(vutils.make_grid(img.to(device)[:64], padding=0, normalize=True).cpu(),(1,2,0)))
+#     #path = "/home/jacob/Documents/DD2424 projekt/lab/l_to_lab/"
+#     if(color):
+#         #plt.savefig(path + "result_pics/" +str(epoch) + "_" + str(current_batch) + "_color.png")
+#         plt.savefig("/home/projektet/network_v8/result_pics/" +str(epoch) + "_" + str(current_batch) + "_color.png")
+#     else:
+#         #plt.savefig(path + "result_pics/" +str(epoch) + "_" + str(current_batch) + "_BW.png")
+#         plt.savefig("/home/projektet/network_v8/result_pics/" +str(epoch) + "_" + str(current_batch) + "_BW.png")
+#     #plt.clf()
+#     plt.close()
+#
+#     #plt.show()
+#
+# def plot_losses(G_losses, D_losses, G_losses_val, D_losses_val, epoch, current_batch):
+#
+#     """ creates two plots. One for the Generator loss and one for the Discriminator loss and saves these figures
+#     """
+#     D_loss_fig = plt.figure('D_cost' + str(epoch) + '_' + str(current_batch))
+#     plt.plot(D_losses, color='b', linewidth=1.5, label='D cost training')  # axis=0
+#     plt.plot(D_losses_val, color='purple', linewidth=1.5, label='D cost validation')  # axis=0
+#     plt.legend(loc='upper right')
+#     D_loss_fig.savefig('/home/projektet/network_v8/plots/D_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=D_loss_fig.dpi)
+#     #path = "/home/jacob/Documents/DD2424 projekt/lab/l_to_lab/"
+#     #D_loss_fig.savefig(path + 'plots/D_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=D_loss_fig.dpi)
+#     #plt.clf()
+#     plt.close(D_loss_fig)
+#
+#
+#
+#     G_loss_fig = plt.figure('G cost' + str(epoch) + '_' + str(current_batch))
+#     plt.plot(G_losses, color='b', linewidth=1.5, label='G cost training')  # axis=0
+#     plt.plot(G_losses_val, color='purple', linewidth=1.5, label='G cost validation')  # axis=0
+#     plt.legend(loc='upper right')
+#     G_loss_fig.savefig('/home/projektet/network_v8/plots/G_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=G_loss_fig.dpi)
+#     #G_loss_fig.savefig(path + 'plots/G_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=G_loss_fig.dpi)
+#     #plt.clf()
+#     plt.close(G_loss_fig)
 
 
 def tensor_format_labels(b_size, label_vec, device):
