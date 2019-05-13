@@ -5,128 +5,127 @@ import matplotlib.pyplot as plt
 from scipy.misc import imread
 import numpy as np
 
-class Generator(nn.Module):
+class VanillaGenerator(nn.Module):
     """ The GAN generator that uses a encoder decoder architecture
     """
 
     def __init__(self):
-        super(Generator, self).__init__()
+        super(VanillaGenerator, self).__init__()
 
-        self.createVanillaGan()
+        self.createVanillaGenerator()
 
-    def createVanillaGan(self):
+    def createVanillaGenerator(self):
 
         #this was cut from teh constructor
 
         # Encoding layers
         self.conv_1 = nn.Sequential(
-        nn.Conv2d(1, 64, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
-        nn.BatchNorm2d( 64 ),
+        nn.Conv2d(1, 80, 8, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.BatchNorm2d( 80 ),
         nn.LeakyReLU( 0.2 )
         )
 
         self.conv_2 = nn.Sequential(
-        nn.Conv2d(64, 128, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
-        nn.BatchNorm2d( 128 ),
+        nn.Conv2d(80, 160, 8, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.BatchNorm2d( 160 ),
         nn.LeakyReLU( 0.2 )
         )
 
         self.conv_3 = nn.Sequential(
-        nn.Conv2d(128, 256, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
-        nn.BatchNorm2d( 256 ),
+        nn.Conv2d(160, 320, 6, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.BatchNorm2d( 320 ),
         nn.LeakyReLU( 0.2 )
         )
 
         self.conv_4 = nn.Sequential(
-        nn.Conv2d(256, 512, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
-        nn.BatchNorm2d( 512 ),
+        nn.Conv2d(320, 640, 6, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.BatchNorm2d( 640 ),
         nn.LeakyReLU( 0.2 )
         )
 
         self.conv_5 = nn.Sequential(
-        nn.Conv2d(512, 512, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
-        nn.BatchNorm2d( 512 ),
+        nn.Conv2d(640, 640, 2, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.BatchNorm2d( 640 ),
         nn.LeakyReLU( 0.2 )
         )
 
 
         # Decoding layers
         self.conv_trans_1 = nn.Sequential(
-        nn.ConvTranspose2d(512, 512, 3, stride=2, padding=1, output_padding=1, bias=False),
-        nn.BatchNorm2d(512),
+        nn.ConvTranspose2d(640, 640, 2, stride=2, padding=1, output_padding=1, bias=False),
+        nn.BatchNorm2d(640),
         nn.ReLU(),
         )
 
         self.conv_trans_2 = nn.Sequential(
-        nn.ConvTranspose2d(512, 256, 3, stride=2, padding=1, output_padding=1, bias=False),
-        nn.BatchNorm2d(256),
+        nn.ConvTranspose2d(640, 320, 6, stride=2, padding=1, output_padding=1, bias=False),
+        nn.BatchNorm2d(320),
         nn.ReLU(),
         )
 
         self.conv_trans_3 = nn.Sequential(
-        nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1, bias=False),
-        nn.BatchNorm2d(128),
+        nn.ConvTranspose2d(320, 160, 6, stride=2, padding=1, output_padding=1, bias=False),
+        nn.BatchNorm2d(160),
         nn.ReLU(),
         )
 
         self.conv_trans_4 = nn.Sequential(
-        nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1, bias=False),
-        nn.BatchNorm2d(64),
+        nn.ConvTranspose2d(160, 80, 8, stride=2, padding=2, output_padding=1, bias=False),
+        nn.BatchNorm2d(80),
         nn.ReLU(),
         )
 
         self.conv_trans_5 = nn.Sequential(
-        nn.ConvTranspose2d(64, 3, 3, stride=2, padding=1, output_padding=1, bias=False),
-        #nn.BatchNorm2d(3),
+        nn.ConvTranspose2d(80, 3, 8, stride=2, padding=0, output_padding=0, bias=False),
         nn.Tanh()
         )
         # Tanh at last layer. Source: https://github.com/soumith/ganhacks
 
 
     def forward(self, data):
-        #print('data.size()')
-        #print(data.size())
+        # print('data.size()')
+        # print(data.size())
 
 
         output1 = self.conv_1(data) #10x64x128x128
 
-        #print(output1.size())
-        #print(type(output1))
+        # print(output1.size())
+        # print(type(output1))
 
         output2 = self.conv_2(output1) #10x128x64x64
-        #print(output2.size())
+        # print(output2.size())
 
 
         output3 = self.conv_3(output2) #10x256x32x32
-        #print(output3.size())
+        # print(output3.size())
 
         output4 = self.conv_4(output3) #10x512x16x16
-        #print(output4.size())
+        # print(output4.size())
 
         output5 = self.conv_5(output4) #10x512x8x8
-        #print(output5.size())
+        # print(output5.size())
 
         # Decoding
-        #print("decoding")
+        # print("decoding")
 
         output1_de = self.conv_trans_1(output5) #10x512x16x16
-        #print(output1_de.size())
+        # print(output1_de.size())
 
         skip1_de = torch.cat((output4, output1_de), 1) #10x1024x16x16
 
         output2_de = self.conv_trans_2(output1_de) #10x256x32x32
-        #print(output2_de.size())
+        # print(output2_de.size())
 
 
 
         output3_de = self.conv_trans_3(output2_de) #10x128x64x64
-        #print(output3_de.size())
+        # print(output3_de.size())
 
         output4_de = self.conv_trans_4(output3_de) #10x64x128x128
-        #print(output4_de.size())
+        # print(output4_de.size())
 
         output5_de = self.conv_trans_5(output4_de) #10x128x64x64
-        #print(output5_de.size())
+        # print(output5_de.size())
 
         return output5_de
 
@@ -213,62 +212,62 @@ class GeneratorWithSkipConnections(nn.Module):
 
 
     def forward(self, data):
-        #print('data.size()')
-        #print(data.size())
+        # print('data.size()')
+        # print(data.size())
 
 
         output1 = self.conv_1(data) #10x64x128x128
 
-        #print(output1.size())
-        #print(type(output1))
+        # print(output1.size())
+        # print(type(output1))
 
 
 
         output2 = self.conv_2(output1) #10x128x64x64
-        #print(output2.size())
+        # print(output2.size())
 
 
         output3 = self.conv_3(output2) #10x256x32x32
-        #print(output3.size())
+        # print(output3.size())
 
         output4 = self.conv_4(output3) #10x512x16x16
-        #print(output4.size())
+        # print(output4.size())
 
         output5 = self.conv_5(output4) #10x512x8x8
-        #print(output5.size())
+        # print(output5.size())
 
         # Decoding
-        #print("decoding")
+        # print("decoding")
 
         output1_de = self.conv_trans_1(output5) #10x512x16x16
-        #print(output1_de.size())
+        # print(output1_de.size())
 
         skip1_de = torch.cat((output4, output1_de), 1) #10x1024x16x16
 
         output2_de = self.conv_trans_2(skip1_de) #10x256x32x32
-        #print(output2_de.size())
+        # print(output2_de.size())
 
         skip2_de = torch.cat((output3, output2_de), 1) #10x512x16x16
 
         output3_de = self.conv_trans_3(skip2_de) #10x128x64x64
-        #print(output3_de.size())
+        # print(output3_de.size())
 
         skip3_de = torch.cat((output2, output3_de), 1) #10x256x16x16
 
         output4_de = self.conv_trans_4(skip3_de) #10x64x128x128
-        #print(output4_de.size())
+        # print(output4_de.size())
 
         skip4_de = torch.cat((output1, output4_de), 1) #10x128x16x16
 
         output5_de = self.conv_trans_5(skip4_de) #10x128x64x64
-        #print(output5_de.size())
+        # print(output5_de.size())
 
         return output5_de
 
 
 if __name__ == "__main__":
     #gan = Generator()
-    gan = GeneratorWithSkipConnections()
+    gan = VanillaGan()
     #hl_graph = hl.build_graph(model, torch.zeros([1, 3, 224, 224]))
     #hl_graph = hl.build_graph(gan, torch.zeros([1, 1, 256, 256]))
 
@@ -277,7 +276,7 @@ if __name__ == "__main__":
     image_array = torch.tensor([[image_array]]) # nu int 32
     image_array = image_array.type('torch.FloatTensor')
     #generated_im = gan.forward(image_array)
-    output = discriminator(image_array)
+    output = gan(image_array)
 
 
     # generated = generated_im.data.numpy()
