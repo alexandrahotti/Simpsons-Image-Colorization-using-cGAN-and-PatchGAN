@@ -41,13 +41,15 @@ class Discriminator(nn.Module):
         )
 
         self.conv_6 = nn.Sequential(
-        nn.Conv2d(512, 512, 5, stride=1, padding=0, bias=False), # in channel, out channel, filter kernel size
+        nn.Conv2d(512, 512, 5, stride=1, padding=0, bias=False),
         nn.BatchNorm2d( 512 ),
         nn.LeakyReLU( 0.1 )
         )
 
         self.conv_7 = nn.Sequential(
         nn.Conv2d(512, 1, 1, stride=1, padding=0, bias=False), # in channel, out channel, filter kernel size
+        nn.BatchNorm2d( 1 ),
+        nn.LeakyReLU( 0.1 )
         )
 
         self.conv_8 = nn.Sequential(
