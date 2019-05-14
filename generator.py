@@ -5,8 +5,14 @@ import matplotlib.pyplot as plt
 from scipy.misc import imread
 import numpy as np
 
+
 class VanillaGenerator(nn.Module):
-    """ The GAN generator that uses a encoder decoder architecture
+
+    """ The vanilla generator is a generator without skip connections which is modelled after: (OBS källa)
+    and is used as a first starting point. The most significant difference compared to GeneratorWithSkipConnections
+    is the skip connections as well as the filters used. The vanilla generator in accordan with (OBS källa) uses the
+    same filter kernel size: 3x3 throughout the entire network, while GeneratorWithSkipConnections has filters which
+    deacrese in size as the intermediary outputs of the network gets smaller.
     """
 
     def __init__(self):
@@ -16,273 +22,148 @@ class VanillaGenerator(nn.Module):
 
     def createVanillaGenerator(self):
 
-        #this was cut from teh constructor
-
         # Encoding layers
+
         self.conv_1 = nn.Sequential(
-        nn.Conv2d(1, 80, 8, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
-        nn.BatchNorm2d( 80 ),
-        nn.LeakyReLU( 0.2 )
+
+            # Strided Convolutions accoridng to: https://arxiv.org/pdf/1511.06434.pdf?fbclid=IwAR2l2Otqnh-TYbrvHvlqV1V-a8-Tpep-_6xlH2aAuMT-__Y4-W1ppfwIhGs
+            # in channel, out channel, filter kernel size, stride, padding, bias
+            nn.Conv2d(1, 80, 8, stride = 2, padding = 1, bias = False ),
+
+            # Batch Normalization according to https://arxiv.org/pdf/1511.06434.pdf?fbclid=IwAR2l2Otqnh-TYbrvHvlqV1V-a8-Tpep-_6xlH2aAuMT-__Y4-W1ppfwIhGs
+            nn.BatchNorm2d(80),
+            nn.LeakyReLU(0.2)
         )
 
         self.conv_2 = nn.Sequential(
-        nn.Conv2d(80, 160, 8, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
-        nn.BatchNorm2d( 160 ),
-        nn.LeakyReLU( 0.2 )
+            nn.Conv2d(80, 160, 8, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(160),
+            nn.LeakyReLU(0.2)
         )
 
         self.conv_3 = nn.Sequential(
-        nn.Conv2d(160, 320, 6, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
-        nn.BatchNorm2d( 320 ),
-        nn.LeakyReLU( 0.2 )
+            nn.Conv2d(160, 320, 6, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(320),
+            nn.LeakyReLU(0.2)
         )
 
         self.conv_4 = nn.Sequential(
-        nn.Conv2d(320, 640, 6, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
-        nn.BatchNorm2d( 640 ),
-        nn.LeakyReLU( 0.2 )
+            nn.Conv2d(320, 640, 6, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(640),
+            nn.LeakyReLU(0.2)
         )
 
         self.conv_5 = nn.Sequential(
-        nn.Conv2d(640, 640, 2, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
-        nn.BatchNorm2d( 640 ),
-        nn.LeakyReLU( 0.2 )
+            nn.Conv2d(640, 640, 2, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(640),
+            nn.LeakyReLU(0.2)
         )
-
-
-        # Decoding layers
-        self.conv_trans_1 = nn.Sequential(
-        nn.ConvTranspose2d(640, 640, 2, stride=2, padding=1, output_padding=1, bias=False),
-        nn.BatchNorm2d(640),
-        nn.ReLU(),
-        )
-
-        self.conv_trans_2 = nn.Sequential(
-        nn.ConvTranspose2d(640, 320, 6, stride=2, padding=1, output_padding=1, bias=False),
-        nn.BatchNorm2d(320),
-        nn.ReLU(),
-        )
-
-        self.conv_trans_3 = nn.Sequential(
-        nn.ConvTranspose2d(320, 160, 6, stride=2, padding=1, output_padding=1, bias=False),
-        nn.BatchNorm2d(160),
-        nn.ReLU(),
-        )
-
-        self.conv_trans_4 = nn.Sequential(
-        nn.ConvTranspose2d(160, 80, 8, stride=2, padding=2, output_padding=1, bias=False),
-        nn.BatchNorm2d(80),
-        nn.ReLU(),
-        )
-
-        self.conv_trans_5 = nn.Sequential(
-        nn.ConvTranspose2d(80, 3, 8, stride=2, padding=0, output_padding=0, bias=False),
-        nn.Tanh()
-        )
-        # Tanh at last layer. Source: https://github.com/soumith/ganhacks
-
-
-    def forward(self, data):
-        # print('data.size()')
-        # print(data.size())
-
-
-        output1 = self.conv_1(data) #10x64x128x128
-
-        # print(output1.size())
-        # print(type(output1))
-
-        output2 = self.conv_2(output1) #10x128x64x64
-        # print(output2.size())
-
-
-        output3 = self.conv_3(output2) #10x256x32x32
-        # print(output3.size())
-
-        output4 = self.conv_4(output3) #10x512x16x16
-        # print(output4.size())
-
-        output5 = self.conv_5(output4) #10x512x8x8
-        # print(output5.size())
-
-        # Decoding
-        # print("decoding")
-
-        output1_de = self.conv_trans_1(output5) #10x512x16x16
-        # print(output1_de.size())
-
-        skip1_de = torch.cat((output4, output1_de), 1) #10x1024x16x16
-
-        output2_de = self.conv_trans_2(output1_de) #10x256x32x32
-        # print(output2_de.size())
-
-
-
-        output3_de = self.conv_trans_3(output2_de) #10x128x64x64
-        # print(output3_de.size())
-
-        output4_de = self.conv_trans_4(output3_de) #10x64x128x128
-        # print(output4_de.size())
-
-        output5_de = self.conv_trans_5(output4_de) #10x128x64x64
-        # print(output5_de.size())
-
-        return output5_de
-
-class GeneratorWithSkipConnections(nn.Module):
-    """ The GAN generator that uses a encoder decoder architecture, with skip connections
-    https://stackoverflow.com/questions/51773208/pytorch-skip-connection-in-a-sequential-model
-    https://stackoverflow.com/questions/55812474/implementing-u-net-with-skip-connection-in-pytorch
-    """
-
-    def __init__(self):
-        super(GeneratorWithSkipConnections, self).__init__()
-
-        self.createNetwork()
-
-    def createNetwork(self):
-
-        # Encoding layers
-        self.conv_1 = nn.Sequential(
-        nn.Conv2d(1, 64, 6, stride=2, padding=2, bias=False), # in channel, out channel, filter kernel size
-        nn.BatchNorm2d( 64 ),
-        nn.LeakyReLU( 0.2 )
-        )
-
-        self.conv_2 = nn.Sequential(
-        nn.Conv2d(64, 128, 6, stride=2, padding=2, bias=False), # in channel, out channel, filter kernel size
-        nn.BatchNorm2d( 128 ),
-        nn.LeakyReLU( 0.2 )
-        )
-
-        self.conv_3 = nn.Sequential(
-        nn.Conv2d(128, 256, 4, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
-        nn.BatchNorm2d( 256 ),
-        nn.LeakyReLU( 0.2 )
-        )
-
-        self.conv_4 = nn.Sequential(
-        nn.Conv2d(256, 512, 2, stride=2, padding=0, bias=False), # in channel, out channel, filter kernel size
-        nn.BatchNorm2d( 512 ),
-        nn.LeakyReLU( 0.2 )
-        )
-
-        self.conv_5 = nn.Sequential(
-        nn.Conv2d(512, 512, 2, stride=2, padding=0, bias=False), # in channel, out channel, filter kernel size
-        nn.BatchNorm2d( 512 ),
-        nn.LeakyReLU( 0.2 )
-        )
-
 
         # Decoding layers
 
-        #to concat t3 = torch.cat((t1, t2), 1)
-
         self.conv_trans_1 = nn.Sequential(
-        nn.ConvTranspose2d(512, 512, 2, stride=2, padding=0, output_padding=0, bias=False),
-        nn.BatchNorm2d(512),
-        nn.ReLU(),
+
+            # Transposed Strided Convolutions accoridng to: https://arxiv.org/pdf/1511.06434.pdf?fbclid=IwAR2l2Otqnh-TYbrvHvlqV1V-a8-Tpep-_6xlH2aAuMT-__Y4-W1ppfwIhGs
+            nn.ConvTranspose2d(640, 640, 2, stride=2,
+                               padding=1, output_padding=1, bias=False),
+            nn.BatchNorm2d(640),
+
+            # ReLu accoridng to: https://arxiv.org/pdf/1511.06434.pdf?fbclid=IwAR2l2Otqnh-TYbrvHvlqV1V-a8-Tpep-_6xlH2aAuMT-__Y4-W1ppfwIhGs
+            nn.ReLU(),
         )
 
-
         self.conv_trans_2 = nn.Sequential(
-        nn.ConvTranspose2d(1024, 256, 2, stride=2, padding=0, output_padding=0, bias=False),
-        nn.BatchNorm2d(256),
-        nn.ReLU(),
+            nn.ConvTranspose2d(640, 320, 6, stride=2,
+                               padding=1, output_padding=1, bias=False),
+            nn.BatchNorm2d(320),
+            nn.ReLU(),
         )
 
         self.conv_trans_3 = nn.Sequential(
-        nn.ConvTranspose2d(512, 128, 4, stride=2, padding=1, output_padding=0, bias=False),
-        nn.BatchNorm2d(128),
-        nn.ReLU(),
+            nn.ConvTranspose2d(320, 160, 6, stride=2,
+                               padding=1, output_padding=1, bias=False),
+            nn.BatchNorm2d(160),
+            nn.ReLU(),
         )
 
         self.conv_trans_4 = nn.Sequential(
-        nn.ConvTranspose2d(256, 64, 6, stride=2, padding=2, output_padding=0, bias=False),
-        nn.BatchNorm2d(64),
-        nn.ReLU(),
+            nn.ConvTranspose2d(160, 80, 8, stride=2, padding=1,
+                               output_padding=1, bias=False),
+            nn.BatchNorm2d(80),
+            nn.ReLU(),
         )
 
         self.conv_trans_5 = nn.Sequential(
-        nn.ConvTranspose2d(128, 3, 6, stride=2, padding=2, output_padding=0, bias=False),
-        #nn.BatchNorm2d(3),
-        nn.Tanh()
+            nn.ConvTranspose2d(80, 3, 8, stride=2, padding=1,
+                               output_padding=1, bias=False),
+            nn.Tanh()
         )
-        # Tanh at last layer. Source: https://github.com/soumith/ganhacks
 
+    def forward(self, gray_image):
+        """ The generators forward pass.
+            Input: gray_image: 1 x 256 x 256
+            Output: 2 x 256 x 256
+        """
 
-    def forward(self, data):
-        # print('data.size()')
-        # print(data.size())
+        # Encoding
 
+        c1 = self.conv_1(gray_image)
 
-        output1 = self.conv_1(data) #10x64x128x128
+        c2 = self.conv_2(c1)
 
-        # print(output1.size())
-        # print(type(output1))
+        c3 = self.conv_3(c2)
 
+        c4 = self.conv_4(c3)
 
-
-        output2 = self.conv_2(output1) #10x128x64x64
-        # print(output2.size())
-
-
-        output3 = self.conv_3(output2) #10x256x32x32
-        # print(output3.size())
-
-        output4 = self.conv_4(output3) #10x512x16x16
-        # print(output4.size())
-
-        output5 = self.conv_5(output4) #10x512x8x8
-        # print(output5.size())
+        c5 = self.conv_5(c4)
 
         # Decoding
-        # print("decoding")
 
-        output1_de = self.conv_trans_1(output5) #10x512x16x16
-        # print(output1_de.size())
+        c1_de = self.conv_trans_1(c5)
 
-        skip1_de = torch.cat((output4, output1_de), 1) #10x1024x16x16
+        c2_de = self.conv_trans_2(c1_de)
 
-        output2_de = self.conv_trans_2(skip1_de) #10x256x32x32
-        # print(output2_de.size())
+        c3_de = self.conv_trans_3(c2_de)
 
-        skip2_de = torch.cat((output3, output2_de), 1) #10x512x16x16
+        c4_de = self.conv_trans_4(c3_de)
 
-        output3_de = self.conv_trans_3(skip2_de) #10x128x64x64
-        # print(output3_de.size())
+        c5_de = self.conv_trans_5(c4_de)
 
-        skip3_de = torch.cat((output2, output3_de), 1) #10x256x16x16
-
-        output4_de = self.conv_trans_4(skip3_de) #10x64x128x128
-        # print(output4_de.size())
-
-        skip4_de = torch.cat((output1, output4_de), 1) #10x128x16x16
-
-        output5_de = self.conv_trans_5(skip4_de) #10x128x64x64
-        # print(output5_de.size())
-
-        return output5_de
+        return c5_de
 
 
 if __name__ == "__main__":
-    #gan = Generator()
-    gan = VanillaGan()
-    #hl_graph = hl.build_graph(model, torch.zeros([1, 3, 224, 224]))
-    #hl_graph = hl.build_graph(gan, torch.zeros([1, 1, 256, 256]))
 
-    image_array = imread('test_im.jpg')
-    image_array = np.matrix.transpose(image_array)
-    image_array = torch.tensor([[image_array]]) # nu int 32
-    image_array = image_array.type('torch.FloatTensor')
-    #generated_im = gan.forward(image_array)
-    output = gan(image_array)
+    # Code for debugging. Used to look at the intermediary dimensions of an image
+    # during the forwardpass where gray scale image is used as input in the generator
+    # to colorize the gray scale image.
 
+    # Create a generator
+    generator = VanillaGenerator()
 
-    # generated = generated_im.data.numpy()
-    # generated = generated[0,:,:,:]
-    # generated = np.round((generated + 1) * 255 / 2)
-    # generated =generated.astype(int)
+    image_name = 'TheSimpsonsS10E01LardoftheDance.mp40005_gray.jpg'
+    image = imread(image_name)
 
-    # print(generated.transpose())
-    # plt.show(plt.imshow( generated.transpose() ))
+    # Image preprocessing
+    image = np.matrix.transpose(image)
+    image = torch.tensor([[image]]).type('torch.FloatTensor')
+
+    # Forward pass
+    colorizes_image = generator(image)
+
+    # Convert tensor into numpy vector
+    colorizes_image = colorizes_image.data.numpy()
+
+    # Extract the first image in the batch
+    colorizes_image = colorizes_image[0, :, :, :]
+
+    # change the range of the values from [-1, 1] to RGB [0, 255]
+    colorizes_image = np.round((colorizes_image + 1) * 255 / 2)
+
+    # Round the values to integers
+    colorizes_image = colorizes_image.astype(int)
+
+    # Plot the generated image
+    plt.imshow(colorizes_image.transpose())
+    plt.axis('off')
+    plt.show()
