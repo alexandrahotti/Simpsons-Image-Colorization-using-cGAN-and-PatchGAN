@@ -6,6 +6,7 @@ from generator import GeneratorWithSkipConnections
 import torch
 import torch.nn as nn
 
+from PIL import Image
 from skimage import color
 
 import argparse
@@ -60,6 +61,7 @@ class SimpsonsDataset(Dataset):
                                 self.image_files_list[idx])
         img_name_gray = img_name[0:-4] + '_gray.jpg'
         image = io.imread(img_name)
+        image_rgb = image
 
         if self.rgb:
             image = self.transform(image)
@@ -75,6 +77,11 @@ class SimpsonsDataset(Dataset):
             #image_ab = image_lab[:,:,[1,2]]
             image_tanh = (image - 127.5) / 127.5
 
+
+
+            image_gray = io.imread(img_name_gray)
+            image_gray_un_norm = image_gray
+
             image_tanh = self.transform(image_tanh)
             image = self.transform(image)
             image_l = self.transform(image_l)
@@ -82,29 +89,29 @@ class SimpsonsDataset(Dataset):
             image_lab = self.transform(image_lab)
 
 
-            return image, image_l, image_lab, img_name, img_name_gray, image_tanh
+            return image, image_l, image_lab, img_name, img_name_gray, image_tanh, image_gray_un_norm, image_rgb
 
 def loadData():
     # Number of workers for dataloader
     workers = 4
 
     # Batch size during training
-    batch_size = 8
+    batch_size = 56
 
 
     #dataroot_train = "C:\\Users\\Alexa\\Desktop\\KTH\\årskurs_4\\DeepLearning\\Assignments\\github\\Deep-Learning-in-Data-Science\\Project\\alex_trainset_22apr\\trainset_gray\\temp"
     #dataroot_train = "C:\\Users\\Alexa\\Desktop\\KTH\\årskurs_4\\DeepLearning\\Assignments\\github\\Deep-Learning-in-Data-Science\\Project\\alex_trainset_22apr\\trainset_gray"
 
     # dataroot_train = "C:\\Users\\Alexa\\Desktop\\KTH\\årskurs_4\\DeepLearning\\Assignments\\github\\Deep-Learning-in-Data-Science\\Project\\Dataset\\trainset"
-
+    #
     dataroot_train = "/home/projektet/dataset/trainset/"
     dataroot_test = "/home/projektet/dataset/testset/"
     dataroot_val = "/home/projektet/dataset/validationset/"
 
 
-    # dataroot_train = "/home/jacob/Documents/DD2424 dataset/trainset/"
-    # dataroot_test = "/home/jacob/Documents/DD2424 dataset/testset/"
-    # dataroot_val = "/home/jacob/Documents/DD2424 dataset/validationset/"
+    #dataroot_train = "/home/jacob/Documents/DD2424 dataset/trainset/"
+    #dataroot_test = "/home/jacob/Documents/DD2424 dataset/testset/"
+    #dataroot_val = "/home/jacob/Documents/DD2424 dataset/validationset/"
 
     trainset = SimpsonsDataset(datafolder = dataroot_train, transform=transforms.Compose([
         transforms.ToTensor()
@@ -174,7 +181,7 @@ def get_labels():
 
 
 def GAN_training():
-    epochs = 20
+    epochs = 10
     ngpu = 1
     #device = "cpu"
     device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
@@ -184,7 +191,8 @@ def GAN_training():
 
 
     #jacobs path
-    path = "/home/jacob/Documents/DD2424 projekt/fixed_nw8/Colorization-using-a-Conditional-GAN-network_v8/"
+    #path = "/home/jacob/Documents/DD2424 projekt/fixed_nw8/Colorization-using-a-Conditional-GAN-network_v8/"
+    path = "/home/jacob/Documents/DD2424 projekt/network_v8/"
 
     device_string = str(device)
     if device_string != "cpu":
@@ -192,7 +200,7 @@ def GAN_training():
 
         path = "/home/projektet/" + network_v +"/"
 
-    path = "/home/projektet/" + network_v +"/"
+    #path = "/home/projektet/" + network_v +"/"
 
     generator = GeneratorWithSkipConnections()  # ngpu) #.to(device) add later to make meory efficient
     generator = generator.to(device)
@@ -201,6 +209,7 @@ def GAN_training():
 
     discriminator = Discriminator()
     discriminator = discriminator.to(device)
+    #discriminator.cuda()
     #discriminator.apply(weights_init)
     #discriminator.load_state_dict(torch.load("/home/projektet/network_v2/models/discriminator_model_3_7.pt"))
 
@@ -240,7 +249,7 @@ def GAN_training():
         #for current_batch, b in enumerate(dataloader):
 
         #for current_batch,((image, image_gray, img_name, img_name_gray), (image_val, image_gray_val, img_name_val, img_name_gray_val)) in enumerate(zip(dataloader, dataloader_validation)):
-        for current_batch,((image, image_l, image_lab, img_name, img_name_gray, image_tanh), (image_val, image_l_val, image_lab_val, img_name_val, img_name_gray_val, image_tanh_val)) in enumerate(zip(dataloader, dataloader_validation)):
+        for current_batch,((image, image_l, image_lab, img_name, img_name_gray, image_tanh, image_gray_un_norm, image_rgb), (image_val, image_l_val, image_lab_val, img_name_val, img_name_gray_val, image_tanh_val,image_gray_un_norm_val, image_rgb_val)) in enumerate(zip(dataloader, dataloader_validation)):
         #for current_batch, (image, image_l, image_ab, img_name, img_name_gray) in enumerate(dataloader):
 
 
@@ -256,10 +265,10 @@ def GAN_training():
             image_tanh = image_tanh.to(device)
 
             #go from RGB -> LAB -> [0,1]
-            image_normalized_lab = normalize_img(image_lab)
+            image_normalized_lab = normalize_img(image_lab.float())
 
             #go from RGB - > L -> [0,1]
-            image_normalized_l = normalize_img_l(image_l)
+            image_normalized_l = normalize_img_l(image_l.float())
 
 
             discriminator.zero_grad()
@@ -267,7 +276,7 @@ def GAN_training():
             # forward pass
 
             #discriminator should take in a lab image.
-            output = discriminator(image_normalized_lab.float())
+            output = discriminator(image_normalized_lab.to(device))
 
             if min_patch_func:
                 output = torch.min(output, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
@@ -297,7 +306,7 @@ def GAN_training():
 
 
 
-            batch_fake = generator(image_normalized_l.float())
+            batch_fake = generator(image_normalized_l.to(device))
 
             # change range from [-1, 1] to LAB range
             batch_fake_lab = change_range_lab_batch(batch_fake).to(device)
@@ -392,17 +401,19 @@ def GAN_training():
             image_l_val = image_l_val.to(device)
             image_lab_val = image_lab_val.to(device)
             image_tanh_val = image_tanh_val.to(device)
+            image_gray_un_norm_val = image_gray_un_norm_val.to(device)
+            image_rgb_val = image_rgb_val.to(device)
 
             #go from RGB -> LAB -> [0,1]
-            image_normalized_lab_val = normalize_img(image_lab_val)
+            image_normalized_lab_val = normalize_img(image_lab_val.float())
 
             #go from RGB - > L -> [0,1]
-            image_normalized_l_val = normalize_img_l(image_l_val)
+            image_normalized_l_val = normalize_img_l(image_l_val.float())
 
 
 
             # forward pass
-            output_val = discriminator(image_normalized_lab_val.float())
+            output_val = discriminator(image_normalized_lab_val.to(device))
 
             if min_patch_func:
                 output_val = torch.min(output_val, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
@@ -422,7 +433,7 @@ def GAN_training():
             D1_loss_real_val = BCE_loss(output_val, labels_real_val)
 
             # Generate fake data - i.e. fake images by inputting black and white images
-            batch_fake_val = generator(image_normalized_l_val.float())
+            batch_fake_val = generator(image_normalized_l_val.to(device))
 
             # change range from [-1, 1] to LAB range so L1 can be computed
             batch_fake_val_lab = change_range_lab_batch(batch_fake_val).to(device)
@@ -496,10 +507,14 @@ def GAN_training():
 
             if current_batch % 100 == 0:
 
-                image_gray_val = read_gray_img(img_name_gray_val[-1])
+                # image_gray_val = read_gray_img(img_name_gray_val[-1])
+                #
+                # save_image(path, image_gray_val, epoch, current_batch, device, False)
+                # save_image(path, image_val[-1], epoch, current_batch, device, True)
 
-                save_image(path, image_gray_val, epoch, current_batch, device, False)
-                save_image(path, image_val[-1], epoch, current_batch, device, True)
+                save_image(path, image_gray_un_norm_val[-1], epoch, current_batch, device, False)
+                save_image(path, image_rgb_val[-1], epoch, current_batch, device, True)
+
                 #
                 # save_image(image_gray_val, epoch, current_batch, device, False)
                 # save_image(image_val[-1], epoch, current_batch, device, True)
@@ -511,7 +526,8 @@ def GAN_training():
                 #img_rgb = convert_lab_to_rgb(image_l[-1], image_ab[-1])
 
 
-                img = validate_generator(path + "result_pics/",device, epoch, current_batch, wrapped_bw_im, generator)
+
+                validate_generator(path + "result_pics/", epoch, current_batch, wrapped_bw_im, generator, device)
                 #reference_img = validate_generator("reference_pics",device, epoch, current_batch, reference_bw, generator, True)
 
 
@@ -553,25 +569,31 @@ def GAN_training():
     return 0
 
 
-def validate_generator(path,device,epoch, current_batch, bw_im, generator, padding_sz=2,  norm=True):
+def validate_generator(save_path, epoch, current_batch, bw_im, generator, device):
+    """ Generates a colored image and saves it
+    """
     with torch.no_grad():
         fake_im = generator(bw_im.float()).detach().cpu()
 
+        img = change_range_ab(fake_im)
+        #fake_im = fake_im.squeeze()
+        img = convert_lab_to_rgb(img.to(device))
+        img = img * 255
+        img = img.squeeze(0)
+        #img = np.transpose(img, (2,1,0))
+        img = np.transpose(img, (1,2,0))
+        img = np.array(img)
+        #print (img.shape)
+        #print(img)
+        img = img.astype(np.uint8)
+
+        image = Image.fromarray(img, 'RGB')
+        #image = Image.fromarray(img)
+        #image.save(save_path +"Color_generated_epoch_" + str(epoch)+ "_batch_" +str(current_batch) + ".png")
+        image.save(save_path + str(epoch) + "_" + str(current_batch) + "_generated.png")
 
 
-    bw_im = bw_im.squeeze(0)
-    fake_im = change_range_ab(fake_im)
-    #fake_im = fake_im.squeeze()
-    img_rgb = convert_lab_to_rgb(fake_im.to(device))
-    plt.axis("off")
-    img = vutils.make_grid(img_rgb, padding = 0, normalize = norm )
-    plt.imshow(np.transpose(img,(1,2,0)), animated=True)
 
-    plt.savefig(path + str(epoch) + "_" + str(current_batch) + "_color_generated.png")
-    plt.close()
-
-
-    return img
 
 
 def normalize_img(image_in):
@@ -595,7 +617,7 @@ def normalize_img(image_in):
     b_upper = 94.482
 
 
-    image_in = image_in.data.numpy()
+    image_in = image_in.data.cpu().numpy()
 
 
 
@@ -644,7 +666,7 @@ def normalize_img_l(image_in):
 
 
 
-    image_in = image_in.data.numpy()
+    image_in = image_in.data.cpu().numpy()
 
     #NewValue = (((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin
 
@@ -885,25 +907,21 @@ def convert_lab_to_rgb_batch(image_lab_batch):
 
     return img_rgb_batch
 
-
 def save_image(path, img, epoch, current_batch, device, color):
     """ Saves a black and white image
     """
-
-    plt.figure()
-    plt.axis("off")
-    plt.imshow(np.transpose(vutils.make_grid(img.to(device)[:64], padding=0, normalize=True).cpu(),(1,2,0)))
-    #path = "/home/jacob/Documents/DD2424 projekt/lab/l_to_lab/"
     if(color):
-        plt.savefig(path + "result_pics/"+ str(epoch) + "_" + str(current_batch) + "_color.png")
-        # plt.savefig("/home/projektet/network_v8/result_pics/" +str(epoch) + "_" + str(current_batch) + "_color.png")
+        #img = Image.fromarray(img)
+        img = Image.fromarray(np.array(img.detach().cpu()))
+        img.save(path + "result_pics/"+ str(epoch) + "_" + str(current_batch) + "_color.png")
+        #image.save(save_path +"Color_generated_epoch_" + str(epoch)+ "_batch_" +str(current_batch) + ".png")
     else:
-        plt.savefig(path + "result_pics/"+ str(epoch) + "_" + str(current_batch) + "_BW.png")
-        # plt.savefig("/home/projektet/network_v8/result_pics/" +str(epoch) + "_" + str(current_batch) + "_BW.png")
-    #plt.clf()
-    plt.close()
+        #img = Image.fromarray(np.array(img.detach()), 'RGB')
+        img = Image.fromarray(np.array(img.detach().cpu()).astype(np.uint8))
+        img.save(path + "result_pics/"+ str(epoch) + "_" + str(current_batch) + "_BW.png")
 
-    #plt.show()
+
+
 
 def plot_losses(path, G_losses, D_losses, G_losses_val, D_losses_val, epoch, current_batch):
 
