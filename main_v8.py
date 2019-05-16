@@ -1,55 +1,45 @@
-from __future__ import print_function
+from __future__ import print_function  # OBS behövs denna
 
 from discriminator import Discriminator
 from generator import GeneratorWithSkipConnections
 
 import torch
 import torch.nn as nn
+from torch.optim.lr_scheduler import StepLR
+import torch.optim as optim
 
-from PIL import Image
-from skimage import color
-
-import argparse
 import os
 import random
-from torch.autograd import Variable
-import torch
-import torch.nn.parallel
-import torch.backends.cudnn as cudnn
-import torch.optim as optim
-import torch.utils.data as torch_data
-import torchvision.datasets as dset
-#from torchsample.transforms import RangeNormalize
 
-
-from torch.utils.data import Dataset, DataLoader, BatchSampler, SequentialSampler, SubsetRandomSampler
-from torchvision import transforms, utils
-import torchvision.utils as vutils
-
-from skimage import io, transform
-
-import random
-import matplotlib.pyplot as plt
+from torch.utils.data import Dataset, DataLoader
 from scipy.misc import imread
+
+from torchvision import transforms, utils
+from skimage import io, transform
 import numpy as np
+from skimage import color
 
-seed = 1234
-random.seed(seed)
-torch.manual_seed(seed)
+from PIL import Image
+import matplotlib.pyplot as plt
 
 
-from torch.utils.data import Dataset
+def set_seed( seed = 1234 ):
+    """ sets a seed for random and torch.
+        Default seed: 1234
+    """
+    random.seed(seed)
+    torch.manual_seed(seed)
+
 
 class SimpsonsDataset(Dataset):
-    def __init__(self, datafolder, transform = None, rgb = True ):
+    def __init__(self, datafolder, transform=None, rgb=True):
+
         self.datafolder = datafolder
-        all_files_list = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(datafolder)) for f in fn]
-        #self.image_files_list = [s for s in os.listdir(datafolder) if
-        #                         '_gray.jpg' not in s and os.path.isfile(os.path.join(datafolder, s))]
+        all_files_list = [os.path.join(dp, f) for dp, dn, fn in os.walk(
+            os.path.expanduser(datafolder)) for f in fn]
+
         self.image_files_list = [s for s in all_files_list if
                                  '_gray.jpg' not in s and '.jpg' in s and os.path.isfile(os.path.join(datafolder, s))]
-
-        # Same for the labels files
         self.transform = transform
         self.rgb = rgb
 
@@ -64,551 +54,494 @@ class SimpsonsDataset(Dataset):
         image_rgb = image
 
         if self.rgb:
-            image = self.transform(image)
+            # Get the data as RGB
+            image_norm = self.transform(image)
             img_name_gray = img_name[0:-4] + '_gray.jpg'
             image_gray = io.imread(img_name_gray)
+            image_gray_un_norm = image_gray
             image_gray = self.transform(image_gray)
-            return image, image_gray, img_name, img_name_gray
+
+            return image_norm, image_gray, image_gray_un_norm, image_rgb, img_name, img_name_gray
 
         else:
-            #lab
-            image_lab = color.rgb2lab(np.array(image)) # np array
-            image_l = image_lab[:,:,[0]]
-            #image_ab = image_lab[:,:,[1,2]]
+            # Get the data as LAB
+            image_lab = color.rgb2lab(np.array(image))
+            image_l = image_lab[:, :, [0]]
             image_tanh = (image - 127.5) / 127.5
-
-
-
-            image_gray = io.imread(img_name_gray)
-            image_gray_un_norm = image_gray
-
             image_tanh = self.transform(image_tanh)
             image = self.transform(image)
             image_l = self.transform(image_l)
-            #image_ab = self.transform(image_ab)
             image_lab = self.transform(image_lab)
 
-
-            return image, image_l, image_lab, img_name, img_name_gray, image_tanh, image_gray_un_norm, image_rgb
-
-def loadData():
-    # Number of workers for dataloader
-    workers = 4
-
-    # Batch size during training
-    batch_size = 56
+            return image, image_l, image_lab, img_name, img_name_gray, image_gray_un_norm, image_rgb
 
 
-    #dataroot_train = "C:\\Users\\Alexa\\Desktop\\KTH\\årskurs_4\\DeepLearning\\Assignments\\github\\Deep-Learning-in-Data-Science\\Project\\alex_trainset_22apr\\trainset_gray\\temp"
-    #dataroot_train = "C:\\Users\\Alexa\\Desktop\\KTH\\årskurs_4\\DeepLearning\\Assignments\\github\\Deep-Learning-in-Data-Science\\Project\\alex_trainset_22apr\\trainset_gray"
+def loadSimpsonDataset( workers, batch_size ):
+    """ Creates dataloaders for the training and validation data sets.
+    """
 
-    # dataroot_train = "C:\\Users\\Alexa\\Desktop\\KTH\\årskurs_4\\DeepLearning\\Assignments\\github\\Deep-Learning-in-Data-Science\\Project\\Dataset\\trainset"
-    #
+    # Paths to the training and validation data sets
     dataroot_train = "/home/projektet/dataset/trainset/"
-    dataroot_test = "/home/projektet/dataset/testset/"
     dataroot_val = "/home/projektet/dataset/validationset/"
 
-
-    #dataroot_train = "/home/jacob/Documents/DD2424 dataset/trainset/"
-    #dataroot_test = "/home/jacob/Documents/DD2424 dataset/testset/"
-    #dataroot_val = "/home/jacob/Documents/DD2424 dataset/validationset/"
-
-    trainset = SimpsonsDataset(datafolder = dataroot_train, transform=transforms.Compose([
+    # Loading the data
+    trainset = SimpsonsDataset(datafolder=dataroot_train, transform=transforms.Compose([
         transforms.ToTensor()
-    ]), rgb = False)
-    validationset = SimpsonsDataset(datafolder = dataroot_val, transform=transforms.Compose([
-            transforms.ToTensor()
-        ]), rgb = False)
+    ]), rgb=False)
 
-    dataloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,shuffle=True, num_workers=workers)
-    dataloader_validation = torch.utils.data.DataLoader(trainset, batch_size=int(batch_size/4),shuffle=True, num_workers=workers)
+    validationset = SimpsonsDataset(datafolder=dataroot_val, transform=transforms.Compose([
+        transforms.ToTensor()
+    ]), rgb=False)
+
+    # Creating the data loaders
+    dataloader = torch.utils.data.DataLoader(
+        trainset, batch_size=batch_size, shuffle=True, num_workers=workers)
+
+    dataloader_validation = torch.utils.data.DataLoader(
+        trainset, batch_size=int(batch_size / 4), shuffle=True, num_workers=workers)
 
     return dataloader, batch_size, dataloader_validation
 
 
-
-
-
-def convert_rgb_to_lab(img_rgb):
-
-    image_lab = color.rgb2lab(np.array(img_rgb)) # np array
-    image_l = image_lab[:,:,[0]]
-    image_l = transforms.ToTensor()(image_l)
-
-    return image_l
-
-# def optimizers(generator, discriminator, learningrate=2e-4, amsgrad=False, b=0.5, momentum=0.9):
-#     # https://pytorch.org/docs/stable/_modules/torch/optim/adam.html
-#     # Use adam for generator and SGD for discriminator. source: https://github.com/soumith/ganhacks
-#     lr_disc = learningrate/2
-#     lr_gen = learningrate/2
-#     Discriminator_optimizer = optim.SGD(
-#         discriminator.parameters(), lr=lr_disc, momentum=momentum)
-#     Generator_optimizer = optim.Adam(
-#         generator.parameters(), lr=lr_gen, betas=(b, 0.999))
-#
-#     return Discriminator_optimizer, Generator_optimizer
-
 def optimizers(generator, discriminator, learningrate=2e-4, amsgrad=False, b=0.5, momentum=0.9):
-    # https://pytorch.org/docs/stable/_modules/torch/optim/adam.html
-    # Use adam for generator and SGD for discriminator. source: https://github.com/soumith/ganhacks
-    # lr_disc = learningrate/2
-    # lr_gen = learningrate/2
+    """ Returns an optimizer for the discriminator and one for the generator.
+
+        For the generator the Adam (OBS source: https://github.com/soumith/ganhacks) optimizer is used with betas = 0.5, 0.999.
+        The first value 0.5 is used instead of the default value according to: https://arxiv.org/pdf/1803.05400.pdf
+
+        For the discriminator SGD (OBS source: https://github.com/soumith/ganhacks) with momentum and weight decay is used. The learning rate is initially set to 2e-4 * 2
+        and is decayed every 5th epoch during training.
+    """
+
     Discriminator_optimizer = optim.SGD(
-        discriminator.parameters(), lr = 2e-4*2, momentum=momentum)
+        discriminator.parameters(), lr = 2e-4 * 2, weight_decay = 1e-4, momentum = momentum)
+
     Generator_optimizer = optim.Adam(
-        generator.parameters(), lr=learningrate, betas=(b, 0.999))
+        generator.parameters(), lr = learningrate, betas = (b, 0.999))
 
     return Discriminator_optimizer, Generator_optimizer
 
 
-
-
-def loss_function(BCE):
+def get_loss_function(BCE=True):
+    """ Returns the loss function which is used during the training of the generator and the discriminator.
+    """
 
     if BCE:
+
         return nn.BCELoss()
 
     return False
 
 
-def get_labels():
 
+def get_labels():
+    """ Labels used for real images and fake images.
+    """
     true_im = 1
     false_im = 0
 
     return true_im, false_im
 
 
-def GAN_training():
-    epochs = 10
-    ngpu = 1
-    #device = "cpu"
-    device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
+def patchGan(output, alpha, min_max_patchGan_func):
+    """ Performs patchGan on a 1 x 32 x 32 output of the discriminator.
+    """
 
+    if patchGan_func:
+        output = compute_soft_min_max(output, alpha)
+    else:
+        output = torch.mean(output, dim=3).mean(dim=2).squeeze(1)
+
+    return output
+
+def uniformly_sample_labels(real_label_upper, real_label_lower, batch_size, device):
+    """ Uniformly samples batch_size number of label values within a provided range.
+    """
+    real_label_upper = 1
+    real_label_lower = 0.8
+
+    soft_labels = torch.tensor([random.uniform(real_label_lower, real_label_upper) for _ in range(batch_size)]).to(device)
+
+    return soft_labels
+
+def create_label_vector( image_label , batch_size, device ):
+    """ Creates a label vector from an image label.
+    """
+
+    return torch.full((batch_size,), image_label, device=device)
+
+def normalize_generator_output( unorm_images ):
+    """ Normalizes values within the range [-1,1] to [0,1]
+    """
+
+    normalized_image_batch = ((( unorm_images + 1) * (1)) / (2))
+
+    return normalized_image_batch
+
+
+def compute_L1_loss( rgb_images, generated_rgb_images ):
+    """ Computes the L1 loss between a generated and a real image.
+    """
+    # Transpose the real rgb image to get the right dimensions for the L1 funciton
+    rgb_images_transposed = torch.tensor(np.transpose(np.array(rgb_images), (0, 3, 1, 2)))
+
+    # Computes the L1 loss
+    L1_loss = L1( generated_rgb_images.view( generated_rgb_images.size(0) , -1), rgb_images_transposed.view( rgb_images_transposed.size(0) , -1).float() )
+
+    return L1_loss
+
+
+def GAN_training():
+
+    epochs = 100
+    ngpu = 1
+
+    # If the code is run on a device with a gpu cuda:0 is set as device, otherwise it is set as cpu.
+    device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
 
     network_v = "network_v8"
 
+    path = "/home/projektet/" + network_v + "/"
 
-    #jacobs path
-    #path = "/home/jacob/Documents/DD2424 projekt/fixed_nw8/Colorization-using-a-Conditional-GAN-network_v8/"
-    path = "/home/jacob/Documents/DD2424 projekt/network_v8/"
+    # Create a genenerator and a discriminator
+    generator = GeneratorWithSkipConnections().to(device)
+    discriminator = Discriminator().to(device)
 
-    device_string = str(device)
-    if device_string != "cpu":
-        #we are in the cloud
+    # Number of workers for dataloader
+    workers = 4
 
-        path = "/home/projektet/" + network_v +"/"
+    # Batch size during training
+    batch_size = 56
 
-    #path = "/home/projektet/" + network_v +"/"
+    # Loads two dataloaders. One for the validation and one for the training set.
+    dataloader, batch_size, dataloader_validation = loadSimpsonData( workers, batch_size )
 
-    generator = GeneratorWithSkipConnections()  # ngpu) #.to(device) add later to make meory efficient
-    generator = generator.to(device)
-    #generator.apply(weights_init)
-    #generator.load_state_dict(torch.load("/home/projektet/network_v2/models/generator_model_3_7.pt"))
-
-    discriminator = Discriminator()
-    discriminator = discriminator.to(device)
-    #discriminator.cuda()
-    #discriminator.apply(weights_init)
-    #discriminator.load_state_dict(torch.load("/home/projektet/network_v2/models/discriminator_model_3_7.pt"))
-
-    dataloader, batch_size, dataloader_validation = loadData()
-
+    # Get the labels for real and fake image.
     true_im_label, false_im_label = get_labels()
 
-    # Set the mode of the discriminator to training
-    discriminator = discriminator.train()
-
-    # Set the mode of the generator to training
-    generator = generator.train()
 
     Discriminator_optimizer, Generator_optimizer = optimizers(generator, discriminator)
 
+    # The a scheduler for the discriminator optimizer is set with a step_size of 5 and a decay parameter of 0.5
+    # such that the learning rate is decayed by 0.5 every 5th epoch.
+    Discriminator_optimizer_scheduler = StepLR( Discriminator_optimizer, step_size=5, gamma=0.5)
 
-    reference_list = []
-
+    # Vectors used to store training and validation losses.
     D_losses = []
     D_losses_val = []
 
     G_losses = []
     G_losses_val = []
-    iters = 0
 
-    lam = 0.5
+    # Set a value for lambda, which is used during the L1 regularization of the generator.
+    regularization_lambda = 100 / 255
 
-    min_patch_func = update_patch_function(0)
+    # The initial function used in the patch gan at epoch 0 is set.
+    initial_epoch = 0
+    patchGan_func = update_patch_function(initial_epoch)
 
+    # The mode of the discriminator and generator to training so that
+    # the weights (OBS: weights or filters ?) of the network can be updated.
+    discriminator = discriminator.train()
+    generator = generator.train()
 
-    for epoch in range(0, epochs):
-        if update_patch_function( epoch ):
-            min_patch_func = update_patch_function( epoch )
+    for epoch in range(initial_epoch, epochs):
 
+        # It is checked if the function used for patchGan should be updated from mean to softmin.
+        if update_patch_function(epoch):
+            patchGan_func = update_patch_function(epoch)
 
+        # The Discriminator optimizer scheduler is notified that another epoch has passed.
+        # The learning rate of the optimizer is only decayed every 5th epoch.
+        Discriminator_optimizer_scheduler.step()
+        print('Epoch:', epoch, 'LR:', Discriminator_optimizer_scheduler.get_lr())
 
-        #for current_batch, b in enumerate(dataloader):
-
-        #for current_batch,((image, image_gray, img_name, img_name_gray), (image_val, image_gray_val, img_name_val, img_name_gray_val)) in enumerate(zip(dataloader, dataloader_validation)):
-        for current_batch,((image, image_l, image_lab, img_name, img_name_gray, image_tanh, image_gray_un_norm, image_rgb), (image_val, image_l_val, image_lab_val, img_name_val, img_name_gray_val, image_tanh_val,image_gray_un_norm_val, image_rgb_val)) in enumerate(zip(dataloader, dataloader_validation)):
-        #for current_batch, (image, image_l, image_ab, img_name, img_name_gray) in enumerate(dataloader):
-
-
-
-            # batch = b[0]
-            # batch  = batch.to(device)
-            # batch_gray = b[1]
-            # batch_gray  = batch_gray.to(device)
+        # For every epoch we use the dataloader to go trhough one batch at the time
+        #for current_batch, ((image_norm, image_gray, image_gray_un_norm, image_rgb, img_name, img_name_gray), (image_norm_val, image_gray_val, image_gray_un_norm_val, image_rgb_val, img_name_val, img_name_gray_val)) in enumerate(zip(dataloader, dataloader_validation)):
+        for current_batch,((image, image_l, image_lab, img_name, img_name_gray, image_gray_un_norm, image_rgb), (image_val, image_l_val, image_lab_val, img_name_val, img_name_gray_val, image_gray_un_norm_val, image_rgb_val)) in enumerate(zip(dataloader, dataloader_validation)):
 
             image = image.to(device)
             image_l = image_l.to(device)
             image_lab = image_lab.to(device)
-            image_tanh = image_tanh.to(device)
 
-            #go from RGB -> LAB -> [0,1]
-            image_normalized_lab = normalize_img(image_lab.float())
+            # Go from LAB -> [0,1]
+            image_normalized_lab = normalize_img_lab(image_lab.float())
 
-            #go from RGB - > L -> [0,1]
+            # Go from L -> [0,1]
             image_normalized_l = normalize_img_l(image_l.float())
 
 
+            """Train the discriminator """
+
+            # 1. Train with a batch of real colored images
+
+            # Clears the gradients of all optimized torch.Tensors
             discriminator.zero_grad()
 
-            # forward pass
+            # forward pass on the normalized real colored images
+            output = discriminator( image_normalized_lab.float() )
 
-            #discriminator should take in a lab image.
-            output = discriminator(image_normalized_lab.to(device))
+            # We use patchgan on the output with softmin -> alpha = -1
+            alpha = -1
+            output = patchGan(output, alpha, patchGan_func)
 
-            if min_patch_func:
-                output = torch.min(output, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
+            # Using soft labels for the discriminator on real data during training.
+            # According to source:    (OBS)
+            real_label_upper = 1
+            real_label_lower = 0.8
 
-            else:
-                output = torch.mean(output, dim = 3).mean( dim = 2 ).squeeze(1)
+            soft_labels_real_images = uniformly_sample_labels( real_label_upper, real_label_lower, batch_size, device )
 
-            # format labels into tensor vector
-            #true_im_label_soft = random.uniform(0.9, 1.0)
-            labels_real = torch.tensor([random.uniform(0.8, 1.0) for _ in range(batch_size)]).to(device)
-            #labels_real = torch.full((batch_size,), true_im_label_soft, device=device)
-            #print(labels_real)
-            #print(true_im_label_soft2.shape)
-
-            BCE_loss = loss_function(BCE = True)
+            # Get the binary cross entropy loss function.
+            BCE_loss = get_loss_function( BCE = True )
 
             # The loss on the real batch data
-
-            D_loss_real = BCE_loss(output, labels_real)
+            D_loss_real = BCE_loss( output, soft_labels_real_images )
 
             # Compute gradients for D via a backward pass
             D_loss_real.backward()
 
             D_x = output.mean().item()
 
-            # Generate fake data - i.e. fake images by inputting black and white images
 
+            # 2.Train discriminator with a batch of generated colorized images
 
+            # Generate colorized images from black and white images
+            generated_images = generator(image_normalized_l.float() )
 
-            batch_fake = generator(image_normalized_l.to(device))
+            # Change range from [-1, 1] to LAB range
+            generated_images_lab = change_range_tanh_to_lab_batch(generated_images)
 
-            # change range from [-1, 1] to LAB range
-            batch_fake_lab = change_range_lab_batch(batch_fake).to(device)
+            # Format labels into tensor vector
+            labels_fake = create_label_vector( false_im_label, batch_size, device)
 
-            # go from [-1,1] to [0,1]
-            normalized_batch_fake = (((batch_fake + 1 ) * (1)) / (2))
+            # The generated images within the range [-1,1] are normalized into the range [0,1]
+            normalized_generated_images = normalize_generator_output( generated_images )
 
-            # Train with the Discriminator with fake data
+            # Train the Discriminator with generated images
+            output = discriminator(normalized_generated_images.detach() )
 
-            #false_im_label_soft = random.uniform(0.0, 0.1)
-            #false_im_label_soft = random.uniform(0.0, 0.1)
+            # We use patchgan on the output with softmax -> alpha = 1
+            alpha = 1
+            output = patchGan( output, alpha, patchGan_func)
 
-            labels_fake = torch.full((batch_size,), false_im_label, device=device)
+            # The discriminator loss on the generated data is computed
+            D_loss_fake = BCE_loss( output, labels_fake )
 
-
-            # use detach since  ????
-            output = discriminator(normalized_batch_fake.detach())
-
-            if min_patch_func:
-                output = torch.min(output, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
-
-            else:
-                output = torch.mean(output, dim = 3).mean( dim = 2 ).squeeze(1)
-
-            # Compute the loss
-
-            D_loss_fake = BCE_loss(output, labels_fake)
-
+            # Backward pass for the discriminator on the generated data
             D_loss_fake.backward()
 
             D_G_x1 = output.mean().item()
 
+            # The total discriminator loss
             D_loss = D_loss_fake + D_loss_real
 
-            # Walk a step - gardient descent
+            # The discriminator is updated a step. Walk a step. - gradient descent
             Discriminator_optimizer.step()
 
-            ### Update the generator ###
-            # maximize log(D(G(z)))
 
+            """Train the generator """
+
+            # Clears the gradients of all optimized torch.Tensors
             generator.zero_grad()
 
-            # format labels into tensor vector
+            # Format labels into tensor vector
+            labels_real = create_label_vector( true_im_label, batch_size, device)
 
-            labels_real = torch.full((batch_size,), true_im_label, device=device)
+            # Train the Discriminator with generated images
+            output = discriminator(normalized_generated_images)
 
+            # We use patchgan on the output with softmin -> alpha = -1
+            alpha = -1
+            output = patchGan( output, alpha, patchGan_func)
 
+            # The generator loss on the generated data is computed
+            # Note that the generated data is real data for the generator.
+            G_loss_bce = BCE_loss( output, labels_real )
 
-            output = discriminator(normalized_batch_fake)
-            if min_patch_func:
-                output = torch.min(output, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
-
-            else:
-                output = torch.mean(output, dim = 3).mean( dim = 2 ).squeeze(1)
-
-
-            # The generators loss
-            G_loss_bce = BCE_loss(output, labels_real)
+            # L1 regularization is used for the generator
             L1 = nn.L1Loss()
 
-            G_loss_L1 = L1(batch_fake_lab.view(batch_fake_lab.size(0),-1), image_lab.view(image_lab.size(0),-1).float())
-            #print("G_loss_bce", G_loss_bce)
-            #print("G_loss_L1", G_loss_L1)
-            G_loss = G_loss_bce + lam * G_loss_L1
+            # Compute the L1 loss for the generator between rgb generated images and real rgb images.
+            G_loss_L1 = compute_L1_loss( image_lab, generated_images_lab )
+
+            # The total generator loss is computed.
+            G_loss = G_loss_bce + regularization_lambda * G_loss_L1
+
+            # The backward pass for the generator is performed.
             G_loss.backward()
 
             D_G_x2 = output.mean().item()
 
+            # Training of the generator for the current batch is done. Thus we take a step.
             Generator_optimizer.step()
 
-            G_losses.append(G_loss.item())
-            D_losses.append(D_loss.item())
+            # The Current losses of the generators and discriminators are saved.
+            G_losses.append( G_loss.item() )
+            D_losses.append( D_loss.item() )
 
-            ############### VALIDATION ###################
 
+            """  VALIDATION """
 
-            # ********************* Validation code ***********************
+            """ Validation of the discriminator at the current epoch of the current batch"""
 
-            # Set the mode of the discriminator and generator to training
+            # Set the mode of the discriminator and generator to eval so that the weights of the network are not updated.
             discriminator = discriminator.eval()
-            # discriminator2 = discriminator2.eval()
             generator = generator.eval()
 
-            # image_l_val = image_l_val.to(device)
-            # image_ab_val = image_ab_val.to(device)
-            # image_val = image_val.to(device)
-
-            # G_losses_val = []
-            # D_losses_val = []
-
+            # Set the device on the validation images to either cpu or cuda depending on the device.
             image_val = image_val.to(device)
             image_l_val = image_l_val.to(device)
             image_lab_val = image_lab_val.to(device)
-            image_tanh_val = image_tanh_val.to(device)
+
             image_gray_un_norm_val = image_gray_un_norm_val.to(device)
             image_rgb_val = image_rgb_val.to(device)
 
-            #go from RGB -> LAB -> [0,1]
-            image_normalized_lab_val = normalize_img(image_lab_val.float())
+            # Go from LAB -> [0,1]
+            image_normalized_lab_val = normalize_img_lab(image_lab_val.float())
 
-            #go from RGB - > L -> [0,1]
+            # Go from L -> [0,1]
             image_normalized_l_val = normalize_img_l(image_l_val.float())
 
+            # Forward pass on the normalized real colored images
+            output = discriminator( image_normalized_lab_val.float() )
 
+            # We use patchgan on the output with softmin -> alpha = -1
+            alpha = -1
+            output = patchGan( output, alpha, patchGan_func)
 
-            # forward pass
-            output_val = discriminator(image_normalized_lab_val.to(device))
+            # Format labels into tensor vector
+            labels_real_val = create_label_vector( true_im_label, int(batch_size/4), device)
 
-            if min_patch_func:
-                output_val = torch.min(output_val, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
+            # Compute the binary cross entropy loss on real data
+            D1_loss_real_val = BCE_loss( output, labels_real_val )
 
-            else:
-                output_val = torch.mean(output_val, dim = 3).mean( dim = 2 ).squeeze(1)
+            # Generate colorized images from black and white images
+            batch_fake_lab_val = generator( image_normalized_l_val.float() )
 
+            # Change range from [-1, 1] to LAB range
+            generated_images_lab_val = change_range_tanh_to_lab_batch(batch_fake_lab_val)
 
-            #mean_output = torch.mean(output_val, dim = 3).mean( dim = 2 ).squeeze(1)
+            # Format labels into tensor vector
+            labels_fake_val = create_label_vector( false_im_label, int(batch_size / 4), device)
 
-            # format labels into tensor vector
+            # The generated images within the range [-1,1] are normalized into the range [0,1]
+            normalized_generated_images_lab_val = normalize_generator_output( batch_fake_lab_val )
 
-            labels_real_val = torch.full((int(batch_size/4),), true_im_label, device=device)
+            # Train the Discriminator with generated images
+            output = discriminator( normalized_generated_images_lab_val.detach() )
 
-            # The loss on the real batch data
+            # We use patchgan on the output with softmax -> alpha = 1
+            alpha = 1
+            output = patchGan( output, alpha, patchGan_func)
 
-            D1_loss_real_val = BCE_loss(output_val, labels_real_val)
+            # Compute the binary cross entropy loss on fake data
+            D1_loss_fake_val = BCE_loss( output, labels_fake_val )
 
-            # Generate fake data - i.e. fake images by inputting black and white images
-            batch_fake_val = generator(image_normalized_l_val.to(device))
-
-            # change range from [-1, 1] to LAB range so L1 can be computed
-            batch_fake_val_lab = change_range_lab_batch(batch_fake_val).to(device)
-
-            # go from [-1,1] to [0,1]
-            normalized_batch_fake_val = (((batch_fake_val + 1 ) * (1)) / (2))
-
-
-            # Train with the Discriminator with fake data
-
-
-
-            labels_fake_val = torch.full((int(batch_size/4),), false_im_label, device=device)
-
-
-            # use detach since  ????
-            output1_val = discriminator(normalized_batch_fake_val.detach())
-            #mean_output = torch.mean(output1_val, dim = 3).mean( dim = 2 ).squeeze(1)
-            if min_patch_func:
-                output1_val = torch.min(output1_val, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
-
-            else:
-                output1_val = torch.mean(output1_val, dim = 3).mean( dim = 2 ).squeeze(1)
-
-
-            # Compute the loss
-
-            D1_loss_fake_val = BCE_loss(output1_val, labels_fake_val)
-
+            # Compute the total discriminator loss
             D_loss_val = D1_loss_fake_val + D1_loss_real_val
 
-            # Generator loss
 
-            labels_real_val = torch.full((int(batch_size/4),), true_im_label, device=device)
+            """ Validation of the generator at the current epoch of the current batch"""
 
-            output2_val = discriminator(normalized_batch_fake_val)
+            # Format labels into tensor vector
+            labels_real_val = create_label_vector( true_im_label, int(batch_size / 4), device )
 
-            if min_patch_func:
-                output2_val = torch.min(output2_val, dim = 3)[0].min( dim = 2 )[0].squeeze(1)
+            # Forward pass on the normalized generated colored images
+            output = discriminator( normalized_generated_images_lab_val )
 
-            else:
-                output2_val = torch.mean(output2_val, dim = 3).mean( dim = 2 ).squeeze(1)
-
-            #mean_output = torch.mean(output1_val, dim = 3).mean( dim = 2 ).squeeze(1)
-
+            # We use patchgan on the output with softmin -> alpha = -1
+            alpha = -1
+            output = patchGan( output, alpha, patchGan_func)
 
             # The generators loss
-            G1_loss_bce_val = BCE_loss(output2_val, labels_real_val)
+            G1_loss_bce_val = BCE_loss( output, labels_real_val )
+
+            # The L1 loss function
             L1_val = nn.L1Loss()
-            G_loss_L1_val = L1(batch_fake_val_lab.view(batch_fake_val_lab.size(0),-1), image_lab_val.view(image_lab_val.size(0),-1).float())
+
+            # Compute the L1 loss for the generator between rgb generated images and real rgb images.
+            G_loss_L1 = compute_L1_loss( image_lab_val, generated_images_lab_val )
+
+            # Compute the regularized generator loss
+            G_loss_val = G1_loss_bce_val + regularization_lambda * G_loss_L1_val
+
+            # store the validation losses
+            G_losses_val.append( G_loss_val.item() )
+            D_losses_val.append( D_loss_val.item() )
 
 
-            G_loss_val = G1_loss_bce_val + lam * G_loss_L1_val
-
-            G_losses_val.append(G_loss_val.item())
-            D_losses_val.append(D_loss_val.item())
-
-
-            ##############################################
-
-            #print('[%d/%d][%d/%d]\tLoss_D1: %.4f\tLoss_G: %.4f'% (epoch, epochs, current_batch, len(dataloader), D_loss_val.item(), G_loss_val.item()))
             if current_batch % 50 == 0:
-                print('[%d/%d][%d/%d]\tLoss_D1: %.4f\tLoss_G: %.4f'% (epoch, epochs, current_batch, len(dataloader), D_loss_val.item(), G_loss_val.item()))
+                # To follow the performance of the generator and discriminator losses from training and vlaidation are printed every 50th epoch.
+                print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tLoss_val_D: %.4f\tLoss_val_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f' %
+                      (epoch, epochs, current_batch, len(dataloader), D_loss.item(), G_loss.item(), D_loss_val.item(), G_loss_val.item(),  D_x, D_G_x1, D_G_x2))
 
-                #plot_losses(G_losses, D_losses, G_losses_val, D_losses_val, epoch, current_batch)
+                # The losses on the training and validation data is plotted every 50th epoch.
                 plot_losses(path, G_losses, D_losses, G_losses_val, D_losses_val, epoch, current_batch)
 
-
-
-
-
             if current_batch % 100 == 0:
+                # Qualatively validate the generators performance every 100th batch by generating a image from the generator.
+                image_index = -1
+                # For reference the corresponding gray scale and rgb image is saved
+                save_image( path, image_gray_un_norm_val[image_index], epoch, current_batch, device, False)
+                save_image( path, image_rgb_val[image_index], epoch, current_batch, device, True)
 
-                # image_gray_val = read_gray_img(img_name_gray_val[-1])
-                #
-                # save_image(path, image_gray_val, epoch, current_batch, device, False)
-                # save_image(path, image_val[-1], epoch, current_batch, device, True)
+                # Change the dimension of the image used for validation
+                wrapped_bw_im = image_gray_val[image_index].unsqueeze(0).to(device)
 
-                save_image(path, image_gray_un_norm_val[-1], epoch, current_batch, device, False)
-                save_image(path, image_rgb_val[-1], epoch, current_batch, device, True)
-
-                #
-                # save_image(image_gray_val, epoch, current_batch, device, False)
-                # save_image(image_val[-1], epoch, current_batch, device, True)
-
-                #plot_losses(G_losses, D_losses, epoch, current_batch)
-                #wrapped_bw_im = image_l_val[-1].unsqueeze(0)
-                wrapped_bw_im = image_normalized_l_val[-1].unsqueeze(0)
-                wrapped_bw_im = wrapped_bw_im.to(device)
-                #img_rgb = convert_lab_to_rgb(image_l[-1], image_ab[-1])
-
-
-
-                validate_generator(path + "result_pics/", epoch, current_batch, wrapped_bw_im, generator, device)
-                #reference_img = validate_generator("reference_pics",device, epoch, current_batch, reference_bw, generator, True)
-
-
-                #reference_list.append(reference_img)
-
+                validate_generator(path + "result_pics/", epoch, current_batch, wrapped_bw_im, generator)
 
             if current_batch == 0:
-                file_name_generator = "generator_model"
+                # Save the generator and discriminator models.
+                save_model( "generator_model", path, current_batch, generator, epoch)
+                save_model( "discriminator_model", path, current_batch, discriminator, epoch)
 
-                file_name_discriminator = "discriminator_model"
+                # Save the generator and discriminator optimizers.
+                save_model( "Discriminator_optimizer", path, current_batch, Discriminator_optimizer, epoch)
+                save_model( "Generator_optimizer", path, current_batch, Generator_optimizer, epoch)
 
-
-                file_name_discriminator_optimizer = "Discriminator_optimizer"
-
-                file_name_generator_optimizer = "Generator_optimizer"
-
-                # /home/projektet/
-                torch.save(discriminator.state_dict(),path + "models/" +file_name_discriminator + "_"  +str(current_batch) + "_" + str(epoch) +  ".pt")
-                torch.save(Discriminator_optimizer, path + "models/" + file_name_discriminator_optimizer + "_"  +str(current_batch) + "_" + str(epoch) +  ".pt")
-
-
-                torch.save(generator.state_dict(), path + "models/" + file_name_generator +"_" + str(current_batch) + "_" + str(epoch) +  ".pt")
-                torch.save(Generator_optimizer, path + "models/" + file_name_generator_optimizer + "_"  +str(current_batch) + "_" + str(epoch) +  ".pt")
+                # Save the generator and discriminator training and validation vectors.
+                np.save(path + 'G_losses.npy', G_losses)
+                np.save(path + 'D_losses.npy', D_losses)
+                np.save(path + 'G_losses_val.npy', G_losses_val)
+                np.save(path + 'D_losses_val.npy', D_losses_val)
 
 
-                np.save(path +"G_losses.npy", G_losses)
-                np.save(path + "D_losses.npy", D_losses)
-                np.save(path + "G_losses_val.npy", G_losses_val)
-                np.save(path + "D_losses_val.npy", D_losses_val)
-
-            # Set the mode of the discriminator to training
+            # The current epoch is finished.
+            # Set the mode of the discriminator and generator to training
             discriminator = discriminator.train()
-
-
-            # Set the mode of the generator to training
             generator = generator.train()
 
 
-    return 0
+def save_model( file_name, path, current_batch, model, epoch ):
+
+    file_path = path + "models/" + file_name + "_" + str(current_batch) + "_" + str(epoch) + ".pt"
+    torch.save(model.state_dict(), file_path )
 
 
-def validate_generator(save_path, epoch, current_batch, bw_im, generator, device):
+def validate_generator(save_path, epoch, current_batch, bw_im, generator):
     """ Generates a colored image and saves it
     """
+
     with torch.no_grad():
-        fake_im = generator(bw_im.float()).detach().cpu()
 
-        img = change_range_ab(fake_im)
-        #fake_im = fake_im.squeeze()
-        img = convert_lab_to_rgb(img.to(device))
-        img = img * 255
-        img = img.squeeze(0)
-        #img = np.transpose(img, (2,1,0))
-        img = np.transpose(img, (1,2,0))
-        img = np.array(img)
-        #print (img.shape)
-        #print(img)
-        img = img.astype(np.uint8)
+        generated_image = generator(bw_im).detach().cpu()
 
-        image = Image.fromarray(img, 'RGB')
-        #image = Image.fromarray(img)
-        #image.save(save_path +"Color_generated_epoch_" + str(epoch)+ "_batch_" +str(current_batch) + ".png")
-        image.save(save_path + str(epoch) + "_" + str(current_batch) + "_generated.png")
+        generated_image = change_range_tanh_to_ab(generated_image)
+
+        generated_image = change_range_lab_to_rgb(generated_image.to(device))
+
+        # Save the image
+        image = Image.fromarray(image, 'RGB')
+        image_path = save_path + str(epoch) + "_" + str(current_batch) + "_generated.png"
+        image.save( image_path )
 
 
+def change_range_tanh_to_ab(unorm_image):
+    """ Change range values within the range [-1,1] to LAB range for one image
+    """
 
-
-
-def normalize_img(image_in):
-    #change so that the input image (which is in LAB space) is in [0,1] instead of [LAB]
-
-
-    NewMax = 1
-    NewMin = 0
-    #from training set
-    #
-    # a_upper = 93.2470357189119
-    # a_lower = -86.18302974439501
-    # #---
-    # b_upper = 94.47812227647825
-    # b_lower = -106.24797040432395
+    #LAB color range
     l_lower = 0
     l_upper = 100
     a_lower = -86.125
@@ -616,402 +549,143 @@ def normalize_img(image_in):
     b_lower = -107.863
     b_upper = 94.482
 
+    # Convert to numpy
+    unorm_image = unorm_image.data.numpy()
 
-    image_in = image_in.data.cpu().numpy()
+    # Change range
+    l = l_lower +  (unorm_image[0,0,:,:] - (-1)) * (l_upper-l_lower) / (1 - (-1))
+    a = a_lower +  (unorm_image[0,1,:,:] - (-1)) * (a_upper-a_lower) / (1 - (-1))
+    b = b_lower +  (unorm_image[0,2,:,:] - (-1)) * (b_upper-b_lower) / (1 - (-1))
 
-
-
-
-
-    #NewValue = (((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin
-
-    l = torch.tensor(NewMin  +  ((image_in[:,0,:,:] - l_lower) * (NewMax-NewMin) / (l_upper - l_lower))).unsqueeze(1) #).astype(int)
-    a = torch.tensor(NewMin  +  ((image_in[:,1,:,:] - a_lower) * (NewMax-NewMin) / (a_upper - a_lower))).unsqueeze(1) #).astype(int)
-    b = torch.tensor(NewMin  +  ((image_in[:,2,:,:] - b_lower) * (NewMax-NewMin) / (b_upper - b_lower))).unsqueeze(1) #).astype(int)
-
-
-    #l = torch.tensor(l_lower +  (generated[:,0,:,:] - (-1)) * (l_upper-l_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
-    # a = torch.tensor(a_lower +  (generated[:,1,:,:] - (-1)) * (a_upper-a_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
-    # b = torch.tensor(b_lower +  (generated[:,2,:,:] - (-1)) * (b_upper-b_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
-    # #b = generated[0,1,:,:] * (b_upper-b_lower) + b_lower#.astype(int)
-    #image_ab = generated[0,:,:,:] + 1) * 255 / 2
-
-    # print("min l ", np.min(np.array(l)))
-    # print("min a ", np.min(np.array(a)))
-    # print("min b ", np.min(np.array(b)))
-
-
-    img_concat = torch.cat((l, a), 1).cpu()
-
-
-    image_lab = torch.cat((img_concat, b), 1).cpu()
+    # Comcatenate
+    image_lab = torch.tensor([l, a, b])
 
     return image_lab
+
+
+def change_range_tanh_to_lab_batch(unorm_images):
+    """ Change range values within the range [-1,1] to LAB range for one batch
+    """
+
+    #LAB color range
+    l_lower = 0
+    l_upper = 100
+    a_lower = -86.125
+    a_upper = 98.254
+    b_lower = -107.863
+    b_upper = 94.482
+
+    # Convert to numpy
+    unorm_image = unorm_images.data.numpy()
+
+    # Change range
+    l = torch.tensor(l_lower +  (unorm_image[:,0,:,:] - (-1)) * (l_upper-l_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
+    a = torch.tensor(a_lower +  (unorm_image[:,1,:,:] - (-1)) * (a_upper-a_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
+    b = torch.tensor(b_lower +  (unorm_image[:,2,:,:] - (-1)) * (b_upper-b_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
+
+    # Concatenate
+    image_la = torch.cat((l, a), 1).cpu()
+    image_lab = torch.cat((image_la, b), 1).cpu()
+
+    return image_lab
+
+
+def normalize_img_lab(image_in):
+    """ Change so that the input image (which is in LAB space) is in [0,1] instead of [LAB]
+    """
+
+    #LAB Range
+    l_lower = 0
+    l_upper = 100
+    a_lower = -86.125
+    a_upper = 98.254
+    b_lower = -107.863
+    b_upper = 94.482
+
+    NewMax = 1
+    NewMin = 0
+
+    #Convert to CPU & numpy
+    image_in = image_in.data.cpu().numpy()
+
+    l = torch.tensor(NewMin  +  ((image_in[:,0,:,:] - l_lower) * (NewMax-NewMin) / (l_upper - l_lower))).unsqueeze(1)
+    a = torch.tensor(NewMin  +  ((image_in[:,1,:,:] - a_lower) * (NewMax-NewMin) / (a_upper - a_lower))).unsqueeze(1)
+    b = torch.tensor(NewMin  +  ((image_in[:,2,:,:] - b_lower) * (NewMax-NewMin) / (b_upper - b_lower))).unsqueeze(1)
+
+    image_la_norm = torch.cat((l, a), 1).cpu()
+    image_lab_norm = torch.cat((image_la, b), 1).cpu()
+
+    return image_lab_norm
 
 def normalize_img_l(image_in):
-    #change so that the input image (which is in L space) is in [0,1] instead of [LAB]
-
+    """ Change so that the input image (which is in L space) is in [0,1] instead of [LAB]
+    """
+    #LAB range
+    l_lower = 0
+    l_upper = 100
 
     NewMax = 1
     NewMin = 0
-    #from training set
-    #
-    # a_upper = 93.2470357189119
-    # a_lower = -86.18302974439501
-    # #---
-    # b_upper = 94.47812227647825
-    # b_lower = -106.24797040432395
-    l_lower = 0
-    l_upper = 100
-
-
 
     image_in = image_in.data.cpu().numpy()
+    l_norm = torch.tensor(NewMin  +  ((image_in[:,:,:,:] - l_lower) * (NewMax-NewMin) / (l_upper - l_lower))) #).astype(int)
 
-    #NewValue = (((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin
+    return l_norm
 
-    l = torch.tensor(NewMin  +  ((image_in[:,:,:,:] - l_lower) * (NewMax-NewMin) / (l_upper - l_lower))) #).astype(int)
 
-    #l = torch.tensor(l_lower +  (generated[:,0,:,:] - (-1)) * (l_upper-l_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
-    # a = torch.tensor(a_lower +  (generated[:,1,:,:] - (-1)) * (a_upper-a_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
-    # b = torch.tensor(b_lower +  (generated[:,2,:,:] - (-1)) * (b_upper-b_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
-    # #b = generated[0,1,:,:] * (b_upper-b_lower) + b_lower#.astype(int)
-    #image_ab = generated[0,:,:,:] + 1) * 255 / 2
+def preprocess_image( image ):
 
-    # print("min l ", np.min(np.array(l)))
-    # print("min a ", np.min(np.array(a)))
-    # print("min b ", np.min(np.array(b)))
+    image = image.squeeze(0)
+    image = np.transpose( image, (1, 2, 0))
+    image = np.array( image )
+    image = image.astype( np.uint8 )
 
+    return image
 
 
-
-    return l
-
-
-
-
-
-def change_range_ab(im_lab):
-    #https://stackoverflow.com/questions/19099063/what-are-the-ranges-of-coordinates-in-the-cielab-color-space
-
-    #real range
-    l_lower = 0
-    l_upper = 100
-    a_lower = -86.125
-    a_upper = 98.254
-    b_lower = -107.863
-    b_upper = 94.482
-
-
-    #from training set
-    # a_upper = 93.2470357189119
-    # a_lower = -86.18302974439501
-    # #---
-    # b_upper = 94.47812227647825
-    # b_lower = -106.24797040432395
-
-    generated = im_lab.data.numpy()
-    #NewValue = (((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin
-    #print(generated.shape)
-
-    l = l_lower +  (generated[0,0,:,:] - (-1)) * (l_upper-l_lower) / (1 - (-1)) #).astype(int)
-    a = a_lower +  (generated[0,1,:,:] - (-1)) * (a_upper-a_lower) / (1 - (-1)) #).astype(int)
-    b = b_lower +  (generated[0,2,:,:] - (-1)) * (b_upper-b_lower) / (1 - (-1)) #).astype(int)
-    #b = generated[0,1,:,:] * (b_upper-b_lower) + b_lower#.astype(int)
-    #image_ab = generated[0,:,:,:] + 1) * 255 / 2
-    ##print("a size", a.shape)
-
-
-    image_ab = torch.tensor([l, a, b])
-    #image_ab = torch.cat((a, b), 0)
-
-    return image_ab
-
-
-def change_range_lab_batch(im_lab):
-    #https://stackoverflow.com/questions/19099063/what-are-the-ranges-of-coordinates-in-the-cielab-color-space
-
-    #real range
-    l_lower = 0
-    l_upper = 100
-    a_lower = -86.125
-    a_upper = 98.254
-    b_lower = -107.863
-    b_upper = 94.482
-
-
-    #from training set
-    #
-    # a_upper = 93.2470357189119
-    # a_lower = -86.18302974439501
-    # #---
-    # b_upper = 94.47812227647825
-    # b_lower = -106.24797040432395
-
-    generated = im_lab.data.cpu().numpy()
-    #NewValue = (((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin
-
-
-    l = torch.tensor(l_lower +  (generated[:,0,:,:] - (-1)) * (l_upper-l_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
-    a = torch.tensor(a_lower +  (generated[:,1,:,:] - (-1)) * (a_upper-a_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
-    b = torch.tensor(b_lower +  (generated[:,2,:,:] - (-1)) * (b_upper-b_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
-    #b = generated[0,1,:,:] * (b_upper-b_lower) + b_lower#.astype(int)
-    #image_ab = generated[0,:,:,:] + 1) * 255 / 2
-
-
-    img_concat = torch.cat((l, a), 1).cpu()
-
-
-    image_lab = torch.cat((img_concat, b), 1).cpu()
-
-    return image_lab
-
-
-def change_range_lab_to_tanh_batch(im_lab):
-    #https://stackoverflow.com/questions/19099063/what-are-the-ranges-of-coordinates-in-the-cielab-color-space
-
-    #real range
-    l_lower = 0
-    l_upper = 100
-    a_lower = -86.125
-    a_upper = 98.254
-    b_lower = -107.863
-    b_upper = 94.482
-
-    tanh_lower = -1
-    tanh_upper = 1
-
-
-    #from training set
-    # a_upper = 93.2470357189119
-    # a_lower = -86.18302974439501
-    # #---
-    # b_upper = 94.47812227647825
-    # b_lower = -106.24797040432395
-
-    generated = im_lab.data.numpy()
-    #NewValue = (((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin
-
-
-
-    l = torch.tensor(l_lower +  (generated[:,0,:,:] - (-1)) * (l_upper-l_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
-    a = torch.tensor(a_lower +  (generated[:,1,:,:] - (-1)) * (a_upper-a_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
-    b = torch.tensor(b_lower +  (generated[:,2,:,:] - (-1)) * (b_upper-b_lower) / (1 - (-1))).unsqueeze(1) #).astype(int)
-    #b = generated[0,1,:,:] * (b_upper-b_lower) + b_lower#.astype(int)
-    #image_ab = generated[0,:,:,:] + 1) * 255 / 2
-
-
-    img_concat = torch.cat((l, a), 1).cpu()
-
-
-    image_lab = torch.cat((img_concat, b), 1).cpu()
-
-    return image_lab
-
-
-def read_gray_img(image_name_gray):
-    #to be able to save a gray image, you first have to read itself.
-    # hashtag logic life
-
-    transform = transforms.ToTensor()
-    image_gray = io.imread(str(image_name_gray))
-    image_gray = transform(image_gray)
-    return image_gray
-
-# custom weights initialization called on netG and netD
-def weights_init(m):
-    classname = m.__class__.__name__
-    if classname.find('Conv') != -1:
-        nn.init.normal_(m.weight.data, 0.0, 0.02)
-    elif classname.find('BatchNorm') != -1:
-        nn.init.normal_(m.weight.data, 1.0, 0.02)
-        nn.init.constant_(m.bias.data, 0)
-
-def criteria_validate_generator(dataloader, iters, epoch, epochs, current_batch):
-    return  (iters % 10 == 0) or ((epoch == epochs - 1) and (current_batch == len(dataloader) - 1))
-
-def convert_lab_to_rgb(image_ab):
-
-
-    lab = image_ab.cpu()
-    l = lab[0,:,:].unsqueeze(2)
-    a = lab[1,:,:].unsqueeze(2)
-    b = lab[2,:,:].unsqueeze(2)
-
-    lab_t1 = torch.cat((l,a), 2)
-    lab_t = np.array(torch.cat((lab_t1, b), 2))
-
-
-
-
-    # img_jacob = color.lab2xyz(np.transpose(np.array(lab)))
-    # print(img_jacob.shape)
-    #
-    #
-    # z = img_jacob[:,:,2]
-    #
-    # #if z<o, set z to 0
-    # if np.any(z < 0):
-    #     invalid = np.nonzero(z < 0)
-    #     z[invalid] = 0
-    #
-    # img_jacob[:,:,2] = z
-
-
-    img_concat = torch.tensor(color.lab2rgb(lab_t))
-
-
-    r = img_concat[:,:,0].unsqueeze(0)
-    g = img_concat[:,:,1].unsqueeze(0)
-    b = img_concat[:,:,2].unsqueeze(0)
-
-
-    lab_t1 = torch.cat((r,g), 0)
-    lab_t = torch.cat((lab_t1, b), 0)
-
-    #img_concat = color.xyz2rgb(img_jacob)
-
-    #convert back to tensor to plot
-    img_rgb = lab_t#torch.tensor(lab_t)
-
-    return img_rgb
-
-def convert_lab_to_rgb_batch(image_lab_batch):
-
-
-    lab = np.array(image_lab_batch)
-    l = lab[:,0,:,:]
-    a = lab[:,1,:,:]
-    b = lab[:,2,:,:]
-
-
-    img_jacob = color.lab2xyz(np.transpose(np.array(lab)))
-
-
-    z = img_jacob[:,:,:,2]
-
-    #if z<o, set z to 0
-    if np.any(z < 0):
-        invalid = np.nonzero(z < 0)
-        z[invalid] = 0
-
-    img_jacob[:,:,:,2] = z
-
-
-    #img_concat = color.lab2rgb(np.transpose(np.array(img_concat)))
-
-    img_concat = color.xyz2rgb(img_jacob)
-
-    #convert back to tensor to plot
-    img_rgb_batch = torch.tensor(np.transpose(img_concat))
-
-    return img_rgb_batch
-
-def save_image(path, img, epoch, current_batch, device, color):
-    """ Saves a black and white image
+def save_image(path, img, epoch, current_batch, device, RGB_image):
+    """ Saves either a rgb or a gray scale image.
     """
-    if(color):
-        #img = Image.fromarray(img)
+    if( RGB_image ):
+
         img = Image.fromarray(np.array(img.detach().cpu()))
-        img.save(path + "result_pics/"+ str(epoch) + "_" + str(current_batch) + "_color.png")
-        #image.save(save_path +"Color_generated_epoch_" + str(epoch)+ "_batch_" +str(current_batch) + ".png")
-    else:
-        #img = Image.fromarray(np.array(img.detach()), 'RGB')
+        image_path = path + "result_pics/" + str(epoch) + "_" + str(current_batch) + "_color.png"
+        img.save( image_path )
+
+    else: # If a gray scale image
+
         img = Image.fromarray(np.array(img.detach().cpu()).astype(np.uint8))
-        img.save(path + "result_pics/"+ str(epoch) + "_" + str(current_batch) + "_BW.png")
+        image_path = path + "result_pics/" + str(epoch) + "_" + str(current_batch) + "_BW.png"
+        img.save( image_path )
 
 
-
-
-def plot_losses(path, G_losses, D_losses, G_losses_val, D_losses_val, epoch, current_batch):
-
-    """ creates two plots. One for the Generator loss and one for the Discriminator loss and saves these figures
+def plot_losses( path, G_losses, D_losses, G_losses_val, D_losses_val, epoch, current_batch ):
+    """ Creates two plots. One for the Generator training and validation losses and one for the
+        Discriminator training and validation losses and then saves these figures.
     """
+
+    # Plot the discriminator training and validation losses.
     D_loss_fig = plt.figure('D_cost' + str(epoch) + '_' + str(current_batch))
-    plt.plot(D_losses, color='b', linewidth=1.5, label='D cost training')  # axis=0
-    plt.plot(D_losses_val, color='purple', linewidth=1.5, label='D cost validation')  # axis=0
+    plt.plot(D_losses, color='b', linewidth=1.5, label='D cost training')
+    plt.plot(D_losses_val, color='purple', linewidth=1.5,label='D cost validation')
     plt.legend(loc='upper left')
-    #D_loss_fig.savefig('/home/projektet/network_v8/plots/D_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=D_loss_fig.dpi)
-    #path = "/home/jacob/Documents/DD2424 projekt/lab/l_to_lab/"
-    D_loss_fig.savefig(path + 'plots/'+ 'D_cost.png', dpi=D_loss_fig.dpi)
-    #plt.clf()
+    D_loss_fig.savefig(path + 'plots/' + 'D_cost.png', dpi=D_loss_fig.dpi)
     plt.close(D_loss_fig)
 
-
-
+    # Plot the generator training and validation losses.
     G_loss_fig = plt.figure('G cost' + str(epoch) + '_' + str(current_batch))
-    plt.plot(G_losses, color='b', linewidth=1.5, label='G cost training')  # axis=0
-    plt.plot(G_losses_val, color='purple', linewidth=1.5, label='G cost validation')  # axis=0
+    plt.plot(G_losses, color='b', linewidth=1.5, label='G cost training')
+    plt.plot(G_losses_val, color='purple', linewidth=1.5, label='G cost validation')
     plt.legend(loc='upper left')
-    # G_loss_fig.savefig('/home/projektet/network_v8/plots/G_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=G_loss_fig.dpi)
-    G_loss_fig.savefig(path + 'plots/'+ 'G_cost.png', dpi=G_loss_fig.dpi)
-    #plt.clf()
+    G_loss_fig.savefig(path + 'plots/' + 'G_cost.png', dpi=G_loss_fig.dpi)
     plt.close(G_loss_fig)
 
 
-
-
-# def save_image(img, epoch, current_batch, device, color):
-#     """ Saves a black and white image
-#     """
-#
-#     plt.figure()
-#     plt.axis("off")
-#     plt.imshow(np.transpose(vutils.make_grid(img.to(device)[:64], padding=0, normalize=True).cpu(),(1,2,0)))
-#     #path = "/home/jacob/Documents/DD2424 projekt/lab/l_to_lab/"
-#     if(color):
-#         #plt.savefig(path + "result_pics/" +str(epoch) + "_" + str(current_batch) + "_color.png")
-#         plt.savefig("/home/projektet/network_v8/result_pics/" +str(epoch) + "_" + str(current_batch) + "_color.png")
-#     else:
-#         #plt.savefig(path + "result_pics/" +str(epoch) + "_" + str(current_batch) + "_BW.png")
-#         plt.savefig("/home/projektet/network_v8/result_pics/" +str(epoch) + "_" + str(current_batch) + "_BW.png")
-#     #plt.clf()
-#     plt.close()
-#
-#     #plt.show()
-#
-# def plot_losses(G_losses, D_losses, G_losses_val, D_losses_val, epoch, current_batch):
-#
-#     """ creates two plots. One for the Generator loss and one for the Discriminator loss and saves these figures
-#     """
-#     D_loss_fig = plt.figure('D_cost' + str(epoch) + '_' + str(current_batch))
-#     plt.plot(D_losses, color='b', linewidth=1.5, label='D cost training')  # axis=0
-#     plt.plot(D_losses_val, color='purple', linewidth=1.5, label='D cost validation')  # axis=0
-#     plt.legend(loc='upper right')
-#     D_loss_fig.savefig('/home/projektet/network_v8/plots/D_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=D_loss_fig.dpi)
-#     #path = "/home/jacob/Documents/DD2424 projekt/lab/l_to_lab/"
-#     #D_loss_fig.savefig(path + 'plots/D_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=D_loss_fig.dpi)
-#     #plt.clf()
-#     plt.close(D_loss_fig)
-#
-#
-#
-#     G_loss_fig = plt.figure('G cost' + str(epoch) + '_' + str(current_batch))
-#     plt.plot(G_losses, color='b', linewidth=1.5, label='G cost training')  # axis=0
-#     plt.plot(G_losses_val, color='purple', linewidth=1.5, label='G cost validation')  # axis=0
-#     plt.legend(loc='upper right')
-#     G_loss_fig.savefig('/home/projektet/network_v8/plots/G_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=G_loss_fig.dpi)
-#     #G_loss_fig.savefig(path + 'plots/G_cost' + str(epoch) + '_' + str(current_batch) +'.png', dpi=G_loss_fig.dpi)
-#     #plt.clf()
-#     plt.close(G_loss_fig)
-
-
-def tensor_format_labels(b_size, label_vec, device):
-
-    label = torch.full((b_size,8,8), label_vec, device=device)
-
-
-    return label
-
-
-def reshape_to_vector(output):
-    return torch.squeeze(output) #output.view(-1)
-
-def update_patch_function( epoch, min = False ):
+def update_patch_function(epoch, min=False):
     """ Initially we want to use the mean when we calculate the patch loss. But as the model stabalizes we want
         start focusing on the bad areas created by the generator. Thus we instead switch to a mean function.
     """
-    if epoch > 9:
+    if epoch > 22:
         min_func = True
         return min_func
 
@@ -1019,20 +693,5 @@ def update_patch_function( epoch, min = False ):
         return False
 
 
-
 if __name__ == "__main__":
     GAN_training()
-    # gan = Generator()
-    #
-    # image_array = imread('test_im.jpg')
-    # image_array = np.matrix.transpose(image_array)
-    # image_array = torch.tensor([[image_array]])  # nu int 32
-    # image_array = image_array.type('torch.FloatTensor')
-    # generated_im = gan.forward_pass(image_array)
-    # generated = generated_im.data.numpy()
-    # generated = generated[0, :, :, :]
-    # generated = np.round((generated + 1) * 255 / 2)
-    # generated = generated.astype(int)
-    #
-    # # print(generated.transpose())
-    # plt.show(plt.imshow( generated.transpose() ))
