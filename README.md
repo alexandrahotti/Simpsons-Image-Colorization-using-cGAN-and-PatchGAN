@@ -3,6 +3,12 @@
 ## Results
 
 ### Softmin, Average PatchGAN Network Results
+<p align='center'>  
+  <img src='/network_v9/"Generated images"/epoch_15/14TheSimpsonsS16E05FatManandLittleBoy.mp40030_gray__generated.png' width="60%" height="60%"
+   />
+  
+  
+  [Contribution guidelines for this project](network_v9/Generated images/epoch_15/14TheSimpsonsS16E05FatManandLittleBoy.mp40030_gray__generated.png)
 
 
 ### Average PatchGAN Network Results
