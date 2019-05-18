@@ -1,4 +1,4 @@
-from __future__ import print_function  # OBS behövs denna
+from __future__ import print_function
 
 from discriminator import Discriminator
 from generator import GeneratorWithSkipConnections
@@ -106,10 +106,10 @@ def loadSimpsonDataset( workers, batch_size ):
 def optimizers(generator, discriminator, learningrate=2e-4, amsgrad=False, b=0.5, momentum=0.9):
     """ Returns an optimizer for the discriminator and one for the generator.
 
-        For the generator the Adam (OBS source: https://github.com/soumith/ganhacks) optimizer is used with betas = 0.5, 0.999.
+        For the generator the Adam optimizer is used with betas = 0.5, 0.999.
         The first value 0.5 is used instead of the default value according to: https://arxiv.org/pdf/1803.05400.pdf
 
-        For the discriminator SGD (OBS source: https://github.com/soumith/ganhacks) with momentum and weight decay is used. The learning rate is initially set to 2e-4 * 2
+        For the discriminator SGD  with momentum and weight decay is used. The learning rate is initially set to 2e-4 * 2
         and is decayed every 5th epoch during training.
     """
 
@@ -241,7 +241,7 @@ def GAN_training():
     patchGan_func = update_patch_function(initial_epoch)
 
     # The mode of the discriminator and generator to training so that
-    # the weights (OBS: weights or filters ?) of the network can be updated.
+    # the weights (filters) of the network can be updated.
     discriminator = discriminator.train()
     generator = generator.train()
 
@@ -286,7 +286,6 @@ def GAN_training():
             output = patchGan(output, alpha, patchGan_func)
 
             # Using soft labels for the discriminator on real data during training.
-            # According to source:    (OBS)
             real_label_upper = 1
             real_label_lower = 0.8
 

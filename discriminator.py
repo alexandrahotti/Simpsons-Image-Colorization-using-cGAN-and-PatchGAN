@@ -7,7 +7,7 @@ from scipy.misc import imread
 import numpy as np
 
 class Discriminator(nn.Module):
-    """ The GAN generator that uses a encoder decoder architecture
+    """ The GAN discriminator.
     """
 
     def __init__(self):
@@ -15,99 +15,64 @@ class Discriminator(nn.Module):
 
 
         self.conv_1 = nn.Sequential(
-        nn.Conv2d(3, 64, 4, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.Conv2d(3, 64, 4, stride=2, padding=1, bias=False),
         nn.BatchNorm2d( 64 ),
         nn.LeakyReLU( 0.2 )
         )
 
         self.conv_2 = nn.Sequential(
-        nn.Conv2d(64, 128, 4, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.Conv2d(64, 128, 4, stride=2, padding=1, bias=False),
         nn.BatchNorm2d( 128 ),
         nn.LeakyReLU( 0.2 )
         )
 
         self.conv_3 = nn.Sequential(
-        nn.Conv2d(128, 256, 4, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.Conv2d(128, 256, 4, stride=2, padding=1, bias=False),
         nn.BatchNorm2d( 256 ),
         nn.LeakyReLU( 0.2 )
         )
 
         self.conv_4 = nn.Sequential(
-        nn.Conv2d(256, 512, 3, stride=1, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.Conv2d(256, 512, 3, stride=1, padding=1, bias=False),
         nn.BatchNorm2d( 512 ),
         nn.LeakyReLU( 0.2 )
         )
 
         self.conv_5 = nn.Sequential(
-        nn.Conv2d(512, 1, 3, stride=1, padding=1, bias=False), # in channel, out channel, filter kernel size
-        #nn.BatchNorm2d( 1 ),
-        #nn.LeakyReLU( 0.2 )
+        nn.Conv2d(512, 1, 3, stride=1, padding=1, bias=False),
         nn.Sigmoid()
         )
-        #
-        # self.conv_6 = nn.Sequential(
-        # nn.Conv2d(512, 512, 2, stride=2, padding=0, bias=False), # in channel, out channel, filter kernel size
-        # nn.BatchNorm2d( 512 ),
-        # nn.LeakyReLU( 0.2 )
-        # )
-        #
-        # self.conv_7 = nn.Sequential(
-        # nn.Conv2d(512, 1, 1, stride=1, padding=0, bias=False), # in channel, out channel, filter kernel size
-        # nn.BatchNorm2d( 1 ),
-        # nn.LeakyReLU( 0.2 )
-        # )
-        #
-        # self.conv_8 = nn.Sequential(
-        # nn.Conv2d(1, 1, 4, stride=1, padding=0, bias=False), # in channel, out channel, filter kernel size
-        # nn.Sigmoid()
-        # )
 
 
 
     def forward(self, data):
-        #
-        # print('data.size()')
-        # print(data.size())
-        output1 = self.conv_1(data)
-        # print(output1.size())
 
-        output2 = self.conv_2(output1)
-        # print(output2.size())
+        c1 = self.conv_1(data)
 
-        output3 = self.conv_3(output2)
-        # print(output3.size())
+        c2 = self.conv_2(c1)
 
-        output4 = self.conv_4(output3)
-        # print(output4.size())
+        c3 = self.conv_3(c2)
 
-        #
-        output5 = self.conv_5(output4)
-        # print(output5.size())
+        c4 = self.conv_4(c3)
 
-        # output6 = self.conv_6(output5)
-        # print(output6.size())
-        #
-        # output7 = self.conv_7(output6)
-        # print(output7.size())
-        #
-        # output8 = self.conv_8(output7)
-        # print(output8.size())
+        c5 = self.conv_5(c4)
 
-        # Decoding
-
-        # print(output5.size())
-
-        return output5
+        return c5
 
 if __name__ == "__main__":
-    discriminator = Discriminator()
-    #gan = GeneratorWithSkipConnections()
-    #hl_graph = hl.build_graph(model, torch.zeros([1, 3, 224, 224]))
-    #hl_graph = hl.build_graph(gan, torch.zeros([1, 1, 256, 256]))
 
-    image_array = imread('TheSimpsonsS10E01LardoftheDance.mp40004.jpg')
-    image_array = np.matrix.transpose(image_array)
-    image_array = torch.tensor([image_array]) # nu int 32
-    image_array = image_array.type('torch.FloatTensor')
-    #generated_im = gan.forward(image_array)
-    output = discriminator(image_array)
+    # Code for debugging. Used to look at the intermediary dimensions of an image
+    #during the forward pass
+
+    # Create a discriminator
+    discriminator = Discriminator()
+
+    image_name = 'TheSimpsonsS10E01LardoftheDance.mp40005.jpg'
+    image = imread(image_name)
+
+    #Image preprocessing
+    image = np.matrix.transpose(image)
+    image = torch.tensor([image]).type('torch.FloatTensor')
+
+    # Forward pass
+    output = discriminator(image)
