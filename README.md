@@ -4,17 +4,12 @@
 
 ### Softmin, Average PatchGAN Network Results
 
-  
-<div id="fig:fig1">
-![Cool horse](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS16E05FatManandLittleBoy.mp40030_gray__generated.png){'width=20%'}
-
-![Book horse](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS16E05FatManandLittleBoy.mp40030_gray__generated.png){width='20%'}
-![Pink horse](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS16E05FatManandLittleBoy.mp40030_gray__generated.png){'width=20%'}
-
-Look at my tiny horses!
-</div>
- 
-
+<p float="left">
+  <img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS16E05FatManandLittleBoy.mp40030_gray__generated.png' width="16%" height="16%"
+ /><img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS16E10TheresSomethingAboutMarrying.mp40033_gray__generated.png' width="16%" height="16%" /><img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS26E11BartsNewFriend.mp40070_gray__generated.png' width="16%" height="16%" 
+   /><img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS23E14AtLongLastLeave.mp40024_gray__generated.png' width="16%" height="16%" /><img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS21E19TheSquirtandtheWhale.mp40082_gray__generated.png' width="16%" height="16%" 
+   /><img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/1.png' width="16%" height="16%" 
+   />
 
 ### Average PatchGAN Network Results
 
