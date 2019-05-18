@@ -2,15 +2,15 @@
 
 ## Innehållsförteckning
 Here the cGANs described in section 6.2 and used in Experiment 1 and partly in 2 and 3 can be found here:
-[Network 1](/network_v1)
-[Network 2](/network_v2)
-[Network 3](/network_v3)
+[Network 1](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v1)
+[Network 2](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v2)
+[Network 3](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v3_final)
 
 The architecture referred to as MIN-PatchGAN described in section 6.3, 4.3.2 and used in Experiment 4 can be found here:
-[MIN-PatchGAN](/network_v9)
+[MIN-PatchGAN](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v9)
 
 The architecture referred to as Average-PatchGAN described in section 6.3, 4.3.1 and used in Experiment 3 and 4 can be found here:
-[Average-PatchGAN](/network_v10)
+[Average-PatchGAN](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v10)
 
 
 ## Results
