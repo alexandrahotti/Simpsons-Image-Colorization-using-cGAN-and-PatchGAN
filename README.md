@@ -72,7 +72,7 @@ to gray scale using the imagemagick and ffmpeg software suites. Below an example
    />      <img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/master/Ground%20Truth%20Images/TheSimpsonsS20E09LisatheDramaQueen.mp40016_gray.jpg' width="16%" height="16%" 
    />
 
-## Networks Architecture
+## Network Architectures
 The network architecture of the final best performing networks are depicted below.
 
 Below is the architecture used for the generator in Average-PatchGAN (branch: network_v10), MIN-PatchGAN (branch: network_v9), cGAN (branch: network_v10).
