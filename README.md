@@ -77,17 +77,19 @@ The network architecture of the final best performing networks are depicted belo
 
 Below is the architecture used for the generator in Average-PatchGAN (branch: network_v10), MIN-PatchGAN (branch: network_v9), cGAN (branch: network_v10).
 
-This is the architecture used for the discriminator in MIN-PatchGAN (branch: network_v9) and Average-PatchGAN (branch: network_v10).
+
 <p align='center'>  
   <img src='architecture/Generator.JPG' width="60%" height="60%"
    />
   
 </p>
+This is the architecture used for the discriminator in MIN-PatchGAN (branch: network_v9) and Average-PatchGAN (branch: network_v10).
 
-Below the architecture used in the discriminator for the cGAN that can be found in branch: network_v2.
 <p align='center'>  
   <img src='architecture/Discriminator_PatchGAN.JPG' width="30%" height="30%" />
 </p>
+
+Below the architecture used in the discriminator for the cGAN that can be found in branch: network_v2.
 <p align='center'>  
   <img src='architecture/Discriminator_Network_2.JPG'  width="45%" height="45%"/>
 </p>
