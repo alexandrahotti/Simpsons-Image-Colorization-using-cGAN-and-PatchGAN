@@ -3,12 +3,21 @@
 ## Results
 
 ### Softmin, Average PatchGAN Network Results
+
+<figure>
 <p align='center'>  
-  <img src='/network_v9/"Generated images"/epoch_15/14TheSimpsonsS16E05FatManandLittleBoy.mp40030_gray__generated.png' width="60%" height="60%"
+  <img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS16E05FatManandLittleBoy.mp40030_gray__generated.png' width="20%" height="20%"
+   />
+
+<p align='center'>  
+  <img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS16E05FatManandLittleBoy.mp40030_gray__generated.png' width="20%" height="20%"
    />
   
-  
-  [Contribution guidelines for this project](network_v9/Generated images/epoch_15/14TheSimpsonsS16E05FatManandLittleBoy.mp40030_gray__generated.png)
+  <figure/>
+
+
+
+ 
 
 
 ### Average PatchGAN Network Results
