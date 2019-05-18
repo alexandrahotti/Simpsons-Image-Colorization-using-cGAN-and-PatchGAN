@@ -60,7 +60,7 @@ class Discriminator(nn.Module):
         nn.LeakyReLU( 0.2 )
         )
 
-        # At the last layer batch normalization (OBS källa) is not used and
+        # At the last layer batch normalization is not used and
         # sigmoid is applied to the convolutional output.
         self.conv_8 = nn.Sequential(
         nn.Conv2d(1, 1, 4, stride=1, padding=0, bias=False), # in channel, out channel, filter kernel size

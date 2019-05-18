@@ -8,11 +8,10 @@ import numpy as np
 
 class VanillaGenerator(nn.Module):
 
-    """ The vanilla generator is a generator without skip connections which is modelled after: (OBS källa)
-    and is used as a first starting point. The most significant difference compared to GeneratorWithSkipConnections
-    is the skip connections as well as the filters used. The vanilla generator in accordan with (OBS källa) uses the
-    same filter kernel size: 3x3 throughout the entire network, while GeneratorWithSkipConnections has filters which
-    deacrese in size as the intermediary outputs of the network gets smaller.
+    """ The vanilla generator is a generator without skip connections. The most significant difference compared
+    to GeneratorWithSkipConnections is the skip connections as well as the filters used. The vanilla generator
+    uses the same filter kernel size: 3x3 throughout the entire network, while GeneratorWithSkipConnections has
+    filters which deacrese in size as the intermediary outputs of the network gets smaller.
     """
 
     def __init__(self):

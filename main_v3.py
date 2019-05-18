@@ -1,4 +1,4 @@
-from __future__ import print_function  # OBS behövs denna
+from __future__ import print_function
 
 from discriminator import Discriminator
 from generator import GeneratorWithSkipConnections
@@ -211,7 +211,7 @@ def GAN_training():
     regularization_lambda = 120 / 255
 
     # The mode of the discriminator and generator to training so that
-    # the weights (OBS: weights or filters ?) of the network can be updated.
+    # the parameters of the network can be updated.
     discriminator = discriminator.train()
     generator = generator.train()
 
@@ -242,7 +242,6 @@ def GAN_training():
             output = discriminator( image_norm.float() )
 
             # Using soft labels for the discriminator on real data during training.
-            # According to source:    (OBS)
             real_label_upper = 1
             real_label_lower = 0.8
 
