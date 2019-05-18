@@ -7,7 +7,7 @@ from scipy.misc import imread
 import numpy as np
 
 class Generator(nn.Module):
-    """ The GAN generator that uses a encoder decoder architecture
+    """ The generator that uses a encoder decoder architecture
     """
 
     def __init__(self):
@@ -15,31 +15,31 @@ class Generator(nn.Module):
 
         # Encoding layers
         self.conv_1 = nn.Sequential(
-        nn.Conv2d(1, 64, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.Conv2d(1, 64, 3, stride=2, padding=1, bias=False),
         nn.BatchNorm2d( 64 ),
         nn.LeakyReLU( 0.1 )
         )
 
         self.conv_2 = nn.Sequential(
-        nn.Conv2d(64, 128, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.Conv2d(64, 128, 3, stride=2, padding=1, bias=False),
         nn.BatchNorm2d( 128 ),
         nn.LeakyReLU( 0.1 )
         )
 
         self.conv_3 = nn.Sequential(
-        nn.Conv2d(128, 256, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.Conv2d(128, 256, 3, stride=2, padding=1, bias=False),
         nn.BatchNorm2d( 256 ),
         nn.LeakyReLU( 0.1 )
         )
 
         self.conv_4 = nn.Sequential(
-        nn.Conv2d(256, 512, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.Conv2d(256, 512, 3, stride=2, padding=1, bias=False),
         nn.BatchNorm2d( 512 ),
         nn.LeakyReLU( 0.1 )
         )
 
         self.conv_5 = nn.Sequential(
-        nn.Conv2d(512, 512, 3, stride=2, padding=1, bias=False), # in channel, out channel, filter kernel size
+        nn.Conv2d(512, 512, 3, stride=2, padding=1, bias=False),
         nn.BatchNorm2d( 512 ),
         nn.LeakyReLU( 0.1 )
         )
@@ -72,7 +72,6 @@ class Generator(nn.Module):
 
         self.conv_trans_5 = nn.Sequential(
         nn.ConvTranspose2d(64, 3, 3, stride=2, padding=1, output_padding=1, bias=False),
-        #nn.BatchNorm2d(3),
         nn.Tanh()
         )
         # Tanh at last layer. Source: https://github.com/soumith/ganhacks
@@ -93,7 +92,7 @@ class Generator(nn.Module):
         output5 = self.conv_5(output4)
 
         # Decoding
-        
+
         output1_de = self.conv_trans_1(output5)
 
         output2_de = self.conv_trans_2(output1_de)
