@@ -4,6 +4,7 @@
 
 ### Softmin, Average PatchGAN Network Results
 
+
 ### Average PatchGAN Network Results
 
 
