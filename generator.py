@@ -9,7 +9,7 @@ import numpy as np
 class GeneratorWithSkipConnections(nn.Module):
 
     """ The GAN generator that has an U-Net architecture modelled according to:
-        https://arxiv.org/abs/1505.04597 (OBS ok källa?).
+        https://arxiv.org/abs/1505.04597
         More precisely it uses an encoder and decoder architecture, with skip connections.
         Also, GeneratorWithSkipConnections has filters which deacrese in size as the
         intermediary outputs of the network gets smaller.
