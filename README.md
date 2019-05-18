@@ -10,6 +10,13 @@
    /><img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS23E14AtLongLastLeave.mp40024_gray__generated.png' width="16%" height="16%" /><img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS21E19TheSquirtandtheWhale.mp40082_gray__generated.png' width="16%" height="16%" 
    /><img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/1.png' width="16%" height="16%" 
    />
+  
+  <p float="left">
+  <img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS17E03MilhouseofSandandFog.mp40077_gray__generated.png' width="16%" height="16%"
+ /><img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS20E09LisatheDramaQueen.mp40016_gray__generated.png' width="16%" height="16%" /><img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS23E02BartStopstoSmelltheRoosevelts.mp40044_gray__generated.png' width="16%" height="16%" 
+   /><img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS27E22OrangeistheNewYellow.mp40014_gray__generated.png' width="16%" height="16%" /><img src='' width="16%" height="16%" 
+   /><img src='' width="16%" height="16%" 
+   />
 
 ### Average PatchGAN Network Results
 
