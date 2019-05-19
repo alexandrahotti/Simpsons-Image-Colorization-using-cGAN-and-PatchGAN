@@ -7,16 +7,17 @@ Here the cGANs described in section 6.2 and used in Experiment 1 and partly in 2
 [Network 3](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v3)
 
 The architecture referred to as MIN-PatchGAN described in section 6.3, 4.3.2 and used in Experiment 4 can be found here:
-[MIN-PatchGAN](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v9)
+[Min-PatchGAN](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v9)
 
 The architecture referred to as Average-PatchGAN described in section 6.3, 4.3.1 and used in Experiment 3 and 4 can be found here:
-[Average-PatchGAN](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v10)
+[Avg-PatchGAN](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v10)
 
 
 ## Results
+Here some results from the two best performing networks can be found.
 
-### Softmin-Average-PatchGAN Network Results
-Generated images using the MIN-PatchGAN architecture described in sections 4.32 and 6.3 in our paper.
+### Min-PatchGAN Network Results
+Generated images using the Min-PatchGAN architecture described in sections 4.32 and 6.3 in our paper.
 
 <p float="left" align='center'>  
   <img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v9/Generated%20images/epoch_15/14TheSimpsonsS16E05FatManandLittleBoy.mp40030_gray__generated.png' width="16%" height="16%"
@@ -34,8 +35,8 @@ Generated images using the MIN-PatchGAN architecture described in sections 4.32 
    />
   
 
-### Average-PatchGAN-Network Results
-Generated images using the Average-PatchGAN architecture described in sections 4.31 and 6.3 in our paper.
+### Avg-PatchGAN-Network Results
+Generated images using the Avg-PatchGAN architecture described in sections 4.31 and 6.3 in our paper.
 <p float="left" align='center'>  
   <img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v10/Generated%20images/epoch_15/15TheSimpsonsS16E05FatManandLittleBoy.mp40030_gray__generated.png' width="16%" height="16%"
  /><img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v10/Generated%20images/epoch_15/15TheSimpsonsS16E10TheresSomethingAboutMarrying.mp40033_gray__generated.png' width="16%" height="16%" /><img src='https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/blob/network_v10/Generated%20images/epoch_15/15TheSimpsonsS26E11BartsNewFriend.mp40070_gray__generated_mean.png' width="16%" height="16%" 
