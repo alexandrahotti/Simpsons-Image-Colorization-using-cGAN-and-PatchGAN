@@ -1,6 +1,6 @@
 # The Simpsons Image Colorization using a Conditional Generative Adversarial Networks (cGANs) and a Markovian discriminator (PatchGAN)
 
-## Innehållsförteckning
+## Table of Contents
 Here the cGANs described in section 6.2 and used in Experiment 1 and partly in 2 and 3 can be found here:
 [Network 1](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v1)
 [Network 2](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v2)
