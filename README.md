@@ -12,6 +12,8 @@ The architecture referred to as MIN-PatchGAN described in section 6.3, 4.3.2 and
 The architecture referred to as Average-PatchGAN described in section 6.3, 4.3.1 and used in Experiment 3 and 4 can be found here:
 [Avg-PatchGAN](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v10)
 
+The code used to create the dataset can be found here:
+[Bashscripts](https://github.com/alexandrahotti/Simpsons-Image-Colorization-using-cGAN-and-PatchGAN/tree/bashscripts)
 
 ## Results
 Here some results from the two best performing networks can be found.
