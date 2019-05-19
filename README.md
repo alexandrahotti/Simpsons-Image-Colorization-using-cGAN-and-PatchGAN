@@ -4,7 +4,7 @@
 Here the cGANs described in section 6.2 and used in Experiment 1 and partly in 2 and 3 can be found here:
 [Network 1](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v1)
 [Network 2](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v2)
-[Network 3](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v3_final)
+[Network 3](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v3)
 
 The architecture referred to as MIN-PatchGAN described in section 6.3, 4.3.2 and used in Experiment 4 can be found here:
 [MIN-PatchGAN](https://github.com/alexandrahotti/Colorization-using-a-Conditional-GAN/tree/network_v9)
