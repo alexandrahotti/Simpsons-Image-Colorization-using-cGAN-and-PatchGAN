@@ -105,6 +105,7 @@ This is the architecture used for the discriminator in MIN-PatchGAN (branch: net
   <img src='architecture/Discriminator_PatchGAN.JPG' width="30%" height="30%" />
 </p>
 
+
 Below the architecture used in the discriminator for the cGAN that can be found in branch: network_v2.
 <p align='center'>  
   <img src='architecture/Discriminator_Network_2.JPG'  width="45%" height="45%"/>
