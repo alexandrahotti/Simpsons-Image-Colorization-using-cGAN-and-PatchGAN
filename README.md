@@ -15,6 +15,13 @@ The architecture referred to as Average-PatchGAN described in section 6.3, 4.3.1
 The code used to create the dataset can be found here:
 [Bashscripts](https://github.com/alexandrahotti/Simpsons-Image-Colorization-using-cGAN-and-PatchGAN/tree/bashscripts)
 
+The project report can be found here:
+[Report](https://github.com/alexandrahotti/Simpsons-Image-Colorization-using-cGAN-and-PatchGAN/blob/master/DD2424_Simpsons_Image_Colorization_using_cGAN_and_PatchGAN_Alexandra_Hotti_Jacob_Malmberg_Marcus_Nystad_%C3%96hman.pdf)
+
+The project powerpoint presentation can be found here:
+[Powerpoint Presentation](https://github.com/alexandrahotti/Simpsons-Image-Colorization-using-cGAN-and-PatchGAN/blob/master/Simpsons%20Image%20Colorization%20using%20cGAN%20and%20PatchGAN.pptx)
+
+
 ## Results
 Here some results from the two best performing networks can be found.
 
